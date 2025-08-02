@@ -7,6 +7,10 @@ import { User } from '../user/user.entity';
 export class AuthService {
   constructor(private readonly userRepository: UserRepository) {}
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return this.userRepository.findByEmail(email);
+  }
+
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
@@ -16,6 +20,10 @@ export class AuthService {
   }
 
   async registerUser(email: string, password: string): Promise<User> {
+    const existing = await this.userRepository.findByEmail(email);
+    if (existing) {
+      throw new Error('User with this email already exists');
+    }
     const passwordHash = await this.hashPassword(password);
     const user = new User();
     user.email = email;
