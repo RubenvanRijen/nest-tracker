@@ -1,4 +1,11 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { RegisterDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -6,9 +13,10 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() body: { email: string; password: string }) {
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async register(@Body() body: RegisterDto) {
     // TODO: Save user to DB
-    const hash = await this.authService.hashPassword(body.password);
-    return { email: body.email, passwordHash: hash };
+    await this.authService.hashPassword(body.password); // Hash password, save user in DB in future
+    return { email: body.email, message: 'Registration successful' };
   }
 }
