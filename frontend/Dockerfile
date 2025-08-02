@@ -1,10 +1,8 @@
-# Use official Node.js LTS image
-
 # --- Build stage ---
 FROM node:20-alpine3.20 AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci # Install all dependencies, including dev
 COPY . .
 RUN npm run build
 

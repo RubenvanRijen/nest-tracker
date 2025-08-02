@@ -3,12 +3,12 @@ services:
     build:
       context: ./backend
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT}:3000"
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
     depends_on:
       - frontend
     networks:
@@ -17,12 +17,13 @@ services:
     build:
       context: ./frontend
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT}:5173"
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
+      - API_URL=${API_URL}
     networks:
       - appnet
 networks:
