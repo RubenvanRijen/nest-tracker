@@ -1,8 +1,12 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
 
 // https://vite.dev/config/
-import { resolve } from 'path'
+// If you see type errors for 'path' or 'url', run: npm install --save-dev @types/node
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
@@ -11,4 +15,4 @@ export default defineConfig({
       '@frontend': resolve(__dirname, 'src'),
     },
   },
-})
+});
