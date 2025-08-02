@@ -1,14 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: always
-    env_file: .env
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    volumes:
-      - nest-tracker-volume:/var/lib/postgresql/data
-    networks:
-      - nest-tracker-network
   backend:
     build:
       context: ./backend
@@ -19,7 +9,7 @@ services:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
-      - db
+      - database
       - frontend
     networks:
       - nest-tracker-network
@@ -32,6 +22,16 @@ services:
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules
+    networks:
+      - nest-tracker-network
+  database:
+    image: postgres:16-alpine
+    restart: always
+    env_file: .env
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - nest-tracker-volume:/var/lib/postgresql/data
     networks:
       - nest-tracker-network
 volumes:
