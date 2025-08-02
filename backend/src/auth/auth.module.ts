@@ -28,7 +28,7 @@ import { AuthController } from '@backend/auth/auth.controller';
         }
         return secret || 'dev_secret_key'; // Use a secure default only for development/test
       })(),
-      signOptions: { expiresIn: '15m' },
+      signOptions: { expiresIn: '1h' },
     }),
   ],
   controllers: [AuthController],

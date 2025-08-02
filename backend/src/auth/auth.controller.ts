@@ -15,8 +15,11 @@ export class AuthController {
   @Post('register')
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async register(@Body() body: RegisterDto) {
-    // TODO: Save user to DB
-    await this.authService.hashPassword(body.password); // Hash password, save user in DB in future
-    return { email: body.email, message: 'Registration successful' };
+    const user = await this.authService.registerUser(body.email, body.password);
+    return {
+      email: user.email,
+      id: user.id,
+      message: 'Registration successful',
+    };
   }
 }
