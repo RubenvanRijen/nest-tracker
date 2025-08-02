@@ -19,5 +19,13 @@ export default tseslint.config([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: ['./tsconfig.json', './tsconfig.app.json', './tsconfig.node.json'],
+        },
+      },
+    },
   },
 ])
