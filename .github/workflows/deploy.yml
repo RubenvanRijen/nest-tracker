@@ -1,0 +1,44 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+      USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      SERVER: ${{ secrets.DEPLOY_SERVER }}
+      SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker registry
+        run: echo "$PASSWORD" | docker login $REGISTRY -u "$USERNAME" --password-stdin
+
+      - name: Build backend image
+        run: docker build -t $REGISTRY/nest-tracker-backend:latest ./backend
+
+      - name: Build frontend image
+        run: docker build -t $REGISTRY/nest-tracker-frontend:latest ./frontend
+
+      - name: Push backend image
+        run: docker push $REGISTRY/nest-tracker-backend:latest
+
+      - name: Push frontend image
+        run: docker push $REGISTRY/nest-tracker-frontend:latest
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ env.SERVER }}
+          username: ${{ env.USERNAME }}
+          key: ${{ env.SSH_KEY }}
+          script: |
+            cd /path/to/deploy/folder
+            ./deploy.sh

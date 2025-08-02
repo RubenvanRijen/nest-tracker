@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  backend:
+    image: nest-tracker-backend:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - appnet
+  frontend:
+    image: nest-tracker-frontend:latest
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - appnet
+networks:
+  appnet:
+    driver: bridge
