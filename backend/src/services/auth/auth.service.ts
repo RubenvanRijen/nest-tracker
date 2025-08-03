@@ -23,7 +23,21 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    // Runtime validation for encryption key and salt
+    const key = process.env.TWOFA_ENCRYPT_KEY;
+    const salt = process.env.TWOFA_ENCRYPT_SALT;
+    if (!key || key.length < 32) {
+      throw new InternalServerErrorException(
+        'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 characters long.',
+      );
+    }
+    if (!salt || salt.length < 16) {
+      throw new InternalServerErrorException(
+        'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
+      );
+    }
+  }
 
   generateJwt(user: User): string {
     return this.jwtService.sign({
