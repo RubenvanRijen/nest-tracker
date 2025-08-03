@@ -1,13 +1,14 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { globalIgnores } from 'eslint/config'
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+import { globalIgnores } from 'eslint/config';
 
 export default tseslint.config([
   globalIgnores(['dist']),
   {
+    ignores: ['prettier', 'eslint'],
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
@@ -28,4 +29,4 @@ export default tseslint.config([
       },
     },
   },
-])
+]);
