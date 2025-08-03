@@ -19,15 +19,17 @@ import {
 
 @Injectable()
 export class AuthService {
+  private readonly encryptionKey: Buffer;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
   ) {
-    // Runtime validation for encryption key and salt
-    const key = process.env.TWOFA_ENCRYPT_KEY;
+    // Validate and cache encryption key once
+    const keySource = process.env.TWOFA_ENCRYPT_KEY;
     const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!key || key.length < 32) {
+    if (!keySource || keySource.length < 32) {
       throw new InternalServerErrorException(
         'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 characters long.',
       );
@@ -37,6 +39,7 @@ export class AuthService {
         'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
       );
     }
+    this.encryptionKey = scryptSync(keySource, salt, 32);
   }
 
   generateJwt(user: User): string {
@@ -67,9 +70,14 @@ export class AuthService {
       if (!token) {
         throw new BadRequestException('2FA token required');
       }
-      const secret = this.decryptSecret(user.twoFaSecret);
-      const is2faValid = this.verify2faToken(secret, token);
-      if (!is2faValid) {
+      try {
+        const secret = this.decryptSecret(user.twoFaSecret);
+        const is2faValid = this.verify2faToken(secret, token);
+        if (!is2faValid) {
+          throw new UnauthorizedException('Invalid 2FA token');
+        }
+      } catch {
+        // Handle decryption errors gracefully (e.g., if the data was tampered with)
         throw new UnauthorizedException('Invalid 2FA token');
       }
     }
@@ -111,21 +119,8 @@ export class AuthService {
    * Store as hex: iv:tag:encrypted
    */
   encryptSecret(secret: string): string {
-    const keySource = process.env.TWOFA_ENCRYPT_KEY;
-    if (!keySource) {
-      throw new InternalServerErrorException(
-        'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
-      );
-    }
-    const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!salt) {
-      throw new InternalServerErrorException(
-        'Encryption salt (TWOFA_ENCRYPT_SALT) must be set in environment',
-      );
-    }
-    const key = scryptSync(keySource, salt, 32);
     const iv = randomBytes(12); // GCM standard IV size is 12 bytes
-    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    const cipher = createCipheriv('aes-256-gcm', this.encryptionKey, iv);
     const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
     const tag = cipher.getAuthTag();
     // Store as hex: iv:tag:encrypted
@@ -138,23 +133,10 @@ export class AuthService {
   decryptSecret(data: string): string {
     // GCM format: iv:tag:encrypted
     const [ivHex, tagHex, encryptedHex] = data.split(':');
-    const keySource = process.env.TWOFA_ENCRYPT_KEY;
-    if (!keySource) {
-      throw new InternalServerErrorException(
-        'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
-      );
-    }
-    const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!salt) {
-      throw new InternalServerErrorException(
-        'Encryption salt (TWOFA_ENCRYPT_SALT) must be set in environment',
-      );
-    }
-    const key = scryptSync(keySource, salt, 32);
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
     decipher.setAuthTag(tag);
     const decrypted = Buffer.concat([
       decipher.update(encrypted),
