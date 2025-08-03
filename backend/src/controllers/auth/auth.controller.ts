@@ -113,7 +113,8 @@ export class AuthController {
     }
     // Encrypt secret before saving
     user.twoFaSecret = this.authService.encryptSecret(body.secret);
-    await this.authService['testRepo'].save(user);
+    // Use public saveUser method
+    await this.authService.saveUser(user);
     return { message: '2FA enabled' };
   }
 

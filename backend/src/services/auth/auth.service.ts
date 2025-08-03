@@ -27,6 +27,13 @@ export class AuthService {
     });
   }
 
+  /**
+   * Public method to save/update a user entity.
+   */
+  async saveUser(user: User): Promise<User> {
+    return await this.userRepository.save(user);
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     const user = await this.userRepository.findOne({ where: { email } });
     return user ?? undefined;
