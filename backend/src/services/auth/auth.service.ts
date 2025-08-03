@@ -107,7 +107,8 @@ export class AuthService {
   }
 
   /**
-   * Encrypt a string using AES-256-CTR. Returns base64 string with IV prepended.
+   * Encrypt a string using AES-256-GCM. Returns hex string with IV, tag, and ciphertext.
+   * Store as hex: iv:tag:encrypted
    */
   encryptSecret(secret: string): string {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
