@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -20,6 +21,7 @@ import {
 @Injectable()
 export class AuthService {
   private readonly encryptionKey: Buffer;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @InjectRepository(User)
@@ -107,8 +109,19 @@ export class AuthService {
         if (!is2faValid) {
           throw new UnauthorizedException('Invalid 2FA token');
         }
-      } catch {
-        // Handle decryption errors gracefully (e.g., if the data was tampered with)
+      } catch (error) {
+        // Log the error with user context and stack trace using NestJS Logger
+        if (error instanceof Error) {
+          this.logger.error(
+            `2FA secret decryption or verification failed for user ${user.id}: ${error.message}`,
+            error.stack,
+          );
+        } else {
+          this.logger.error(
+            `2FA secret decryption or verification failed for user ${user.id}: Unknown error type`,
+            JSON.stringify(error),
+          );
+        }
         throw new UnauthorizedException('Invalid 2FA token');
       }
     }
