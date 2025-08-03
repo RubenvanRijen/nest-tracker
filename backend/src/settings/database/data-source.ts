@@ -1,4 +1,8 @@
 import { DataSourceOptions } from 'typeorm';
+import {
+  Environment,
+  environmentFromString,
+} from '@backend/enums/environment/environment.enum';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
@@ -8,5 +12,7 @@ export const dataSourceOptions: DataSourceOptions = {
   password: process.env.POSTGRES_PASSWORD ?? 'postgres',
   database: process.env.POSTGRES_DB ?? 'nesttracker',
   entities: [__dirname + '/../../../**/*.entity.{ts,js}'],
-  synchronize: true,
+  synchronize:
+    environmentFromString(process.env.NODE_ENV ?? 'development') !==
+    Environment.Production,
 };
