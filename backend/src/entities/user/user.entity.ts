@@ -19,8 +19,9 @@ export class User {
 
   /**
    * Hash of the user's password. Never store plain text passwords.
+   * Not selected by default to prevent accidental exposure.
    */
-  @Column()
+  @Column({ select: false })
   passwordHash: string;
 
   /**

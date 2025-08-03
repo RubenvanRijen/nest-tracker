@@ -56,12 +56,34 @@ export class AuthService {
   /**
    * Handles login logic, including password and 2FA verification.
    */
+  /**
+   * Retrieves a user by email, including the password hash for authentication purposes.
+   * This method is specifically for login and should not be used for other queries.
+   */
+  private async _getUserWithPasswordByEmail(
+    email: string,
+  ): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+      select: [
+        'id',
+        'email',
+        'passwordHash',
+        'apiKeyHash',
+        'twoFaSecret',
+        'passkeyId',
+        'roles',
+      ],
+    });
+  }
+
   async loginUser(
     email: string,
     password: string,
     token?: string,
   ): Promise<{ user: User; jwt: string }> {
-    const user = await this.getUserByEmail(email);
+    // Use the dedicated method to fetch the user with their password hash
+    const user = await this._getUserWithPasswordByEmail(email);
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -95,6 +117,7 @@ export class AuthService {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    // General user lookup, does NOT select passwordHash
     const user = await this.userRepository.findOne({ where: { email } });
     return user ?? undefined;
   }
