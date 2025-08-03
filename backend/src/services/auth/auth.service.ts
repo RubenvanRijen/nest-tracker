@@ -135,7 +135,11 @@ export class AuthService {
    */
   decryptSecret(data: string): string {
     // GCM format: iv:tag:encrypted
-    const [ivHex, tagHex, encryptedHex] = data.split(':');
+    const parts = data.split(':');
+    if (parts.length !== 3) {
+      throw new UnauthorizedException('Invalid encrypted data format');
+    }
+    const [ivHex, tagHex, encryptedHex] = parts;
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
