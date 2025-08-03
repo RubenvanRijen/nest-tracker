@@ -40,6 +40,18 @@ export class User {
   twoFaSecret?: string;
 
   /**
+   * Temporary secret for 2FA setup, only stored until verification.
+   */
+  @Column({ nullable: true })
+  pendingTwoFaSecret?: string;
+
+  /**
+   * Timestamp of last successful 2FA usage.
+   */
+  @Column({ type: 'timestamp', nullable: true })
+  twoFaLastUsed?: Date;
+
+  /**
    * Identifier for passkey-based authentication (e.g., WebAuthn).
    * Used for passwordless login and hardware-backed credentials.
    */
