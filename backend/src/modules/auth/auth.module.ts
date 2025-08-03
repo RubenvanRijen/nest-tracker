@@ -1,12 +1,12 @@
 import { Module, InternalServerErrorException } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+import { AuthService } from '@backend/services/auth/auth.service';
+import { AuthController } from '@backend/controllers/auth/auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@backend/entities/user/user.entity';
-import { TwoFAService } from './two-fa.service';
-import { ApiKeyService } from './api-key.service';
+import { TwoFaService } from '@backend/services/twofa/twofa.service';
+import { ApiKeyService } from '@backend/services/api-key/api-key.service';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -39,7 +39,7 @@ import { APP_GUARD } from '@nestjs/core';
   controllers: [AuthController],
   providers: [
     AuthService,
-    TwoFAService,
+    TwoFaService,
     ApiKeyService,
     {
       provide: APP_GUARD,
