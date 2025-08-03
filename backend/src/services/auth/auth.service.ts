@@ -3,6 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -15,6 +16,7 @@ import {
   randomBytes,
   scryptSync,
 } from 'crypto';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -83,20 +85,20 @@ export class AuthService {
   async registerUser(email: string, password: string): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
-      throw new Error('User with this email already exists');
+      throw new BadRequestException('User with this email already exists');
     }
     const passwordHash = await this.hashPassword(password);
     const user = this.userRepository.create({ email, passwordHash });
-    // 2FA secret will be encrypted when enabled
     return await this.userRepository.save(user);
   }
+
   /**
    * Encrypt a string using AES-256-CTR. Returns base64 string with IV prepended.
    */
   encryptSecret(secret: string): string {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     if (!keySource) {
-      throw new Error(
+      throw new InternalServerErrorException(
         'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
       );
     }
@@ -115,7 +117,7 @@ export class AuthService {
     const [ivHex, encryptedHex] = data.split(':');
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     if (!keySource) {
-      throw new Error(
+      throw new InternalServerErrorException(
         'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
       );
     }
