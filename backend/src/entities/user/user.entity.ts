@@ -1,8 +1,9 @@
-import { PrimaryGeneratedColumn, Column } from 'typeorm';
+import { PrimaryGeneratedColumn, Column, Entity } from 'typeorm';
 /**
  * Represents an application user and their authentication credentials.
  * Contains security-related fields for advanced authentication mechanisms.
  */
+@Entity()
 export class User {
   /**
    * Unique identifier for the user.

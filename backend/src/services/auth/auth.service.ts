@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import speakeasy from 'speakeasy';
+import * as speakeasy from 'speakeasy';
 import {
   createCipheriv,
   createDecipheriv,
@@ -102,7 +102,13 @@ export class AuthService {
         'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
       );
     }
-    const key = scryptSync(keySource, 'salt', 32);
+    const salt = process.env.TWOFA_ENCRYPT_SALT;
+    if (!salt) {
+      throw new InternalServerErrorException(
+        'Encryption salt (TWOFA_ENCRYPT_SALT) must be set in environment',
+      );
+    }
+    const key = scryptSync(keySource, salt, 32);
     const iv = randomBytes(16);
     const cipher = createCipheriv('aes-256-ctr', key, iv);
     const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
@@ -121,7 +127,13 @@ export class AuthService {
         'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
       );
     }
-    const key = scryptSync(keySource, 'salt', 32);
+    const salt = process.env.TWOFA_ENCRYPT_SALT;
+    if (!salt) {
+      throw new InternalServerErrorException(
+        'Encryption salt (TWOFA_ENCRYPT_SALT) must be set in environment',
+      );
+    }
+    const key = scryptSync(keySource, salt, 32);
     const iv = Buffer.from(ivHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
     const decipher = createDecipheriv('aes-256-ctr', key, iv);

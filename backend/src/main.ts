@@ -8,4 +8,3 @@ async function bootstrap() {
 bootstrap().catch((err) => {
   console.error('Error during bootstrap:', err);
 });
-console.log('POSTGRES_HOST:', process.env.POSTGRES_HOST);
