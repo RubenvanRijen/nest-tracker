@@ -13,7 +13,6 @@ import {
 import { JwtAuthGuard } from '@backend/guards/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
 import { LoginDto } from '@backend/dto/auth/login.dto';
-import { TwoFactorAuthSetupDto } from '@backend/dto/auth/twofa-setup.dto';
 import { TwoFactorAuthVerifyDto } from '@backend/dto/auth/twofa-verify.dto';
 import { AuthService } from '@backend/services/auth/auth.service';
 import { User } from '@backend/entities/user/user.entity';
@@ -75,11 +74,8 @@ export class AuthController {
    */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/setup')
-  async setup2fa(@Body() body: TwoFactorAuthSetupDto) {
-    const user = await this.authService.getUserByEmail(body.email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
+  async setup2fa(@Req() req: Request) {
+    const user = (req as any).user as User;
     const { secret, otpauthUrl } = this.authService.generate2faSecret(
       user.email,
     );
@@ -92,11 +88,8 @@ export class AuthController {
    */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/verify')
-  async verify2fa(@Body() body: TwoFactorAuthVerifyDto) {
-    const user = await this.authService.getUserByEmail(body.email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
+  async verify2fa(@Req() req: Request, @Body() body: TwoFactorAuthVerifyDto) {
+    const user = (req as any).user as User;
     const valid = this.authService.verify2faToken(body.secret, body.token);
     if (!valid) {
       throw new UnauthorizedException('Invalid 2FA token');
@@ -113,14 +106,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('2fa/status')
   async twofaStatus(@Req() req: Request) {
-    const email = req.query.email as string;
-    if (!email) {
-      throw new BadRequestException('Email required');
-    }
-    const user = await this.authService.getUserByEmail(email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
+    const user = (req as any).user as User;
     return { enabled: !!user.twoFaSecret };
   }
 }
