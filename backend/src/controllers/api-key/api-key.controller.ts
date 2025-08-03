@@ -10,10 +10,9 @@ import {
 import type { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 import { ApiKeyService } from '@backend/services/api-key/api-key.service';
 import { JwtAuthGuard } from '@backend/guards/jwt-auth.guard';
-import { ApiKeyAuthGuard } from '@backend/guards/api-key-auth.guard';
 
 @Controller('api-keys')
-@UseGuards(JwtAuthGuard, ApiKeyAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
