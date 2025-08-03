@@ -42,7 +42,13 @@ export class AuthService {
         'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
       );
     }
-    return scryptSync(keySource, salt, 32);
+    const derivedKey = scryptSync(keySource, salt, 32);
+    if (!derivedKey || derivedKey.length !== 32) {
+      throw new InternalServerErrorException(
+        'Derived encryption key is not 32 bytes. Check your TWOFA_ENCRYPT_KEY and TWOFA_ENCRYPT_SALT values.',
+      );
+    }
+    return derivedKey;
   }
 
   generateJwt(user: User): string {
