@@ -8,8 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
-import { ApiKeyService } from '@backend/services/api-key/api-key.service';
-import { JwtAuthGuard } from '@backend/guards/jwt-auth.guard';
+import { ApiKeyService } from '@backend/services/auth/api-key.service';
+import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
 
 @Controller('api-keys')
 @UseGuards(JwtAuthGuard)

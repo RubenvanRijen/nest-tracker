@@ -10,12 +10,12 @@ import {
   UnauthorizedException,
   HttpCode,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '@backend/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
 import { LoginDto } from '@backend/dto/auth/login.dto';
 import { TwoFactorAuthVerifyDto } from '@backend/dto/auth/twofa-verify.dto';
 import { AuthService } from '@backend/services/auth/auth.service';
-import { TwoFaService } from '@backend/services/twofa/twofa.service';
+import { TwoFaService } from '@backend/services/auth/twofa.service';
 import type { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 import { Throttle } from '@nestjs/throttler';
 

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ApiKey } from '@backend/entities/api-key/api-key.entity';
+import { ApiKey } from '@backend/entities/auth/api-key.entity';
 import { User } from '@backend/entities/user/user.entity';
 import * as crypto from 'crypto';
 

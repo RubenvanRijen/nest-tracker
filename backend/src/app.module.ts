@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from '@backend/app.controller';
 import { AppService } from '@backend/app.service';
 import { AuthModule } from '@backend/modules/auth/auth.module';
-import { ApiKeyModule } from '@backend/modules/api-key.module';
-import { TwoFaModule } from '@backend/modules/twofa.module';
+import { ApiKeyModule } from '@backend/modules/auth/api-key.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataSourceOptions } from '@backend/settings/database/data-source';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -21,7 +20,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
     }),
     AuthModule,
     ApiKeyModule,
-    TwoFaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

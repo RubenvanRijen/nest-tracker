@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiKeyService } from '@backend/services/api-key/api-key.service';
+import { ApiKeyService } from '@backend/services/auth/api-key.service';
 import { Request } from 'express';
 import { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 
