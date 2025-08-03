@@ -26,7 +26,10 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
   ) {
-    // Validate and cache encryption key once
+    this.encryptionKey = this.deriveEncryptionKey();
+  }
+
+  private deriveEncryptionKey(): Buffer {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     const salt = process.env.TWOFA_ENCRYPT_SALT;
     if (!keySource || keySource.length < 32) {
@@ -39,7 +42,7 @@ export class AuthService {
         'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
       );
     }
-    this.encryptionKey = scryptSync(keySource, salt, 32);
+    return scryptSync(keySource, salt, 32);
   }
 
   generateJwt(user: User): string {
