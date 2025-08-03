@@ -15,7 +15,7 @@ import { RegisterDto } from '@backend/dto/auth/register.dto';
 import { LoginDto } from '@backend/dto/auth/login.dto';
 import { TwoFactorAuthVerifyDto } from '@backend/dto/auth/twofa-verify.dto';
 import { AuthService } from '@backend/services/auth/auth.service';
-import type { IAuthRequest } from '@backend/interfaces/IAuthRequest';
+import type { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 
 @Controller('auth')
 @UsePipes(new ValidationPipe({ whitelist: true }))
