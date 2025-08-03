@@ -15,7 +15,7 @@ import {
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private readonly testRepo: Repository<User>,
+    private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -28,7 +28,7 @@ export class AuthService {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const user = await this.testRepo.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({ where: { email } });
     return user ?? undefined;
   }
 
@@ -41,14 +41,14 @@ export class AuthService {
   }
 
   async registerUser(email: string, password: string): Promise<User> {
-    const existing = await this.testRepo.findOne({ where: { email } });
+    const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
       throw new Error('User with this email already exists');
     }
     const passwordHash = await this.hashPassword(password);
-    const user = this.testRepo.create({ email, passwordHash });
+    const user = this.userRepository.create({ email, passwordHash });
     // 2FA secret will be encrypted when enabled
-    return await this.testRepo.save(user);
+    return await this.userRepository.save(user);
   }
   /**
    * Encrypt a string using AES-256-CTR. Returns base64 string with IV prepended.
