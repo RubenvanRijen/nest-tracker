@@ -19,15 +19,15 @@ export default tseslint.config(
       },
       sourceType: 'commonjs',
       parserOptions: {
-        projectService: true,
+        projectService: true, // This enables the TypeScript language service
         tsconfigRootDir: import.meta.dirname,
-        project: ['./tsconfig.json', './tsconfig.build.json'],
       },
     },
     settings: {
       'import/resolver': {
         typescript: {
           alwaysTryTypes: true,
+          // This project configuration is specific to the import resolver and should be kept.
           project: ['./tsconfig.json', './tsconfig.build.json'],
         },
       },
@@ -37,7 +37,7 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn'
+      '@typescript-eslint/no-unsafe-argument': 'warn',
     },
   },
 );
