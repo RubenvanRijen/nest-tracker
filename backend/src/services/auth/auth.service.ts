@@ -3,55 +3,22 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as speakeasy from 'speakeasy';
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  scryptSync,
-} from 'crypto';
 
 @Injectable()
 export class AuthService {
-  private readonly encryptionKey: Buffer;
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) {
-    this.encryptionKey = this.deriveEncryptionKey();
-  }
-
-  private deriveEncryptionKey(): Buffer {
-    const keySource = process.env.TWOFA_ENCRYPT_KEY;
-    const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!keySource || keySource.length < 32) {
-      throw new InternalServerErrorException(
-        'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 characters long.',
-      );
-    }
-    if (!salt || salt.length < 16) {
-      throw new InternalServerErrorException(
-        'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
-      );
-    }
-    const derivedKey = scryptSync(keySource, salt, 32);
-    if (!derivedKey || derivedKey.length !== 32) {
-      throw new InternalServerErrorException(
-        'Derived encryption key is not 32 bytes. Check your TWOFA_ENCRYPT_KEY and TWOFA_ENCRYPT_SALT values.',
-      );
-    }
-    return derivedKey;
-  }
+  ) {}
 
   generateJwt(user: User): string {
     return this.jwtService.sign({
@@ -60,7 +27,6 @@ export class AuthService {
       roles: user.roles ?? [],
     });
   }
-
   /**
    * Handles login logic, including password and 2FA verification.
    */
@@ -88,7 +54,6 @@ export class AuthService {
   async loginUser(
     email: string,
     password: string,
-    token?: string,
   ): Promise<{ user: User; jwt: string }> {
     // Use the dedicated method to fetch the user with their password hash
     const user = await this._getUserWithPasswordByEmail(email);
@@ -98,32 +63,6 @@ export class AuthService {
     const valid = await this.comparePassword(password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
-    }
-    if (user.twoFaSecret) {
-      if (!token) {
-        throw new BadRequestException('2FA token required');
-      }
-      try {
-        const secret = this.decryptSecret(user.twoFaSecret);
-        const is2faValid = this.verify2faToken(secret, token);
-        if (!is2faValid) {
-          throw new UnauthorizedException('Invalid 2FA token');
-        }
-      } catch (error) {
-        // Log the error with user context and stack trace using NestJS Logger
-        if (error instanceof Error) {
-          this.logger.error(
-            `2FA secret decryption or verification failed for user ${user.id}: ${error.message}`,
-            error.stack,
-          );
-        } else {
-          this.logger.error(
-            `2FA secret decryption or verification failed for user ${user.id}: Unknown error type`,
-            JSON.stringify(error),
-          );
-        }
-        throw new UnauthorizedException('Invalid 2FA token');
-      }
     }
     return { user, jwt: this.generateJwt(user) };
   }
@@ -156,78 +95,5 @@ export class AuthService {
     const passwordHash = await this.hashPassword(password);
     const user = this.userRepository.create({ email, passwordHash });
     return await this.userRepository.save(user);
-  }
-
-  /**
-   * Encrypt a string using AES-256-GCM. Returns hex string with IV, tag, and ciphertext.
-   * Store as hex: iv:tag:encrypted
-   */
-  encryptSecret(secret: string): string {
-    const iv = randomBytes(12); // GCM standard IV size is 12 bytes
-    const cipher = createCipheriv('aes-256-gcm', this.encryptionKey, iv);
-    const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    // Store as hex: iv:tag:encrypted
-    return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
-  }
-
-  /**
-   * Decrypt a string using AES-256-CTR. Expects base64 string with IV prepended.
-   */
-  decryptSecret(data: string): string {
-    // GCM format: iv:tag:encrypted
-    const parts = data.split(':');
-    if (parts.length !== 3) {
-      throw new UnauthorizedException('Invalid encrypted data format');
-    }
-    const [ivHex, tagHex, encryptedHex] = parts;
-    const iv = Buffer.from(ivHex, 'hex');
-    const tag = Buffer.from(tagHex, 'hex');
-    const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
-    decipher.setAuthTag(tag);
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-    return decrypted.toString();
-  }
-
-  /**
-   * Generate a TOTP secret for 2FA setup.
-   */
-  generate2faSecret(email: string): { secret: string; otpauthUrl: string } {
-    const secretObj = speakeasy.generateSecret({
-      name: email,
-      length: 32,
-      issuer: 'NestTracker',
-    });
-    // Entropy validation: base32 has 5 bits per char, so 32 chars = 160 bits
-    const base32Secret = secretObj.base32;
-    const minEntropyBits = 160;
-    const actualEntropyBits = base32Secret.length * 5;
-    if (actualEntropyBits < minEntropyBits) {
-      throw new InternalServerErrorException(
-        `Generated 2FA secret does not meet minimum entropy requirements: ${actualEntropyBits} < ${minEntropyBits} bits.`,
-      );
-    }
-    return {
-      secret: base32Secret,
-      otpauthUrl: secretObj.otpauth_url,
-    };
-  }
-
-  /**
-   * Verify a TOTP token against a user's secret.
-   */
-  verify2faToken(secret: string, token: string): boolean {
-    return Boolean(
-      speakeasy.totp.verify({
-        secret,
-        encoding: 'base32',
-        token,
-        window: 1, // allow +/- 30s
-      }),
-    );
   }
 }

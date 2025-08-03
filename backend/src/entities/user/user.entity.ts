@@ -1,4 +1,5 @@
-import { PrimaryGeneratedColumn, Column, Entity } from 'typeorm';
+import { PrimaryGeneratedColumn, Column, Entity, OneToMany } from 'typeorm';
+import { ApiKey } from '@backend/entities/api-key/api-key.entity';
 /**
  * Represents an application user and their authentication credentials.
  * Contains security-related fields for advanced authentication mechanisms.
@@ -51,4 +52,10 @@ export class User {
    */
   @Column('simple-array', { nullable: true })
   roles?: string[];
+
+  /**
+   * List of API keys associated with the user.
+   */
+  @OneToMany(() => ApiKey, (apiKey) => apiKey.user)
+  apiKeys?: ApiKey[];
 }
