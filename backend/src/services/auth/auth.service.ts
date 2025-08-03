@@ -4,6 +4,13 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import speakeasy from 'speakeasy';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scryptSync,
+} from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -40,7 +47,71 @@ export class AuthService {
     }
     const passwordHash = await this.hashPassword(password);
     const user = this.testRepo.create({ email, passwordHash });
-    // TODO: Encrypt 2FA secret before saving if needed
+    // 2FA secret will be encrypted when enabled
     return await this.testRepo.save(user);
+  }
+  /**
+   * Encrypt a string using AES-256-CTR. Returns base64 string with IV prepended.
+   */
+  encryptSecret(secret: string): string {
+    const key = scryptSync(
+      process.env.TWOFA_ENCRYPT_KEY || 'default_key',
+      'salt',
+      32,
+    );
+    const iv = randomBytes(16);
+    const cipher = createCipheriv('aes-256-ctr', key, iv);
+    const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
+    // Store as base64: iv:encrypted
+    return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+  }
+
+  /**
+   * Decrypt a string using AES-256-CTR. Expects base64 string with IV prepended.
+   */
+  decryptSecret(data: string): string {
+    const [ivHex, encryptedHex] = data.split(':');
+    const key = scryptSync(
+      process.env.TWOFA_ENCRYPT_KEY || 'default_key',
+      'salt',
+      32,
+    );
+    const iv = Buffer.from(ivHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const decipher = createDecipheriv('aes-256-ctr', key, iv);
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+    return decrypted.toString();
+  }
+
+  /**
+   * Generate a TOTP secret for 2FA setup.
+   */
+  generate2faSecret(email: string): { secret: string; otpauthUrl: string } {
+    const secretObj = speakeasy.generateSecret({
+      name: email,
+      length: 32,
+      issuer: 'NestTracker',
+    });
+    return {
+      secret: secretObj.base32,
+      otpauthUrl: secretObj.otpauth_url,
+    };
+  }
+
+  /**
+   * Verify a TOTP token against a user's secret.
+   */
+  verify2faToken(secret: string, token: string): boolean {
+    return Boolean(
+      speakeasy.totp.verify({
+        secret,
+        encoding: 'base32',
+        token,
+        window: 1, // allow +/- 30s
+      }),
+    );
   }
 }
