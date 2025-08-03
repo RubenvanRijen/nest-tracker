@@ -116,10 +116,9 @@ export class AuthService {
     return await this.userRepository.save(user);
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
+  async getUserByEmail(email: string): Promise<User | null> {
     // General user lookup, does NOT select passwordHash
-    const user = await this.userRepository.findOne({ where: { email } });
-    return user ?? undefined;
+    return await this.userRepository.findOne({ where: { email } });
   }
 
   async hashPassword(password: string): Promise<string> {
