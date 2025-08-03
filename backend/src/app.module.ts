@@ -6,10 +6,19 @@ import { ApiKeyModule } from '@backend/modules/api-key.module';
 import { TwoFaModule } from '@backend/modules/twofa.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataSourceOptions } from '@backend/settings/database/data-source';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(dataSourceOptions),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 5,
+        },
+      ],
+    }),
     AuthModule,
     ApiKeyModule,
     TwoFaModule,
