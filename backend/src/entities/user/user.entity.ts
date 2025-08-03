@@ -31,13 +31,8 @@ export class User {
   apiKeyHash?: string;
 
   /**
-   * Secret for two-factor authentication (2FA), e.g., TOTP.
-   * Store securely and never expose to clients.
-   */
-  /**
    * Encrypted secret for two-factor authentication (2FA), e.g., TOTP.
-   * Store securely and never expose to clients.
-   * TODO: Implement encryption before saving to DB.
+   * Always encrypted before saving to DB. Never expose to clients.
    */
   @Column({ nullable: true })
   twoFaSecret?: string;

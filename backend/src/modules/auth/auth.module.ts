@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { Environment } from '@backend/enums/enviroment/environment.enum';
+import { Environment } from '@backend/enums/environment/environment.enum';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from '@backend/services/auth/auth.service';
