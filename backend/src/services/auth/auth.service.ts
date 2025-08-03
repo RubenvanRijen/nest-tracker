@@ -123,18 +123,20 @@ export class AuthService {
       );
     }
     const key = scryptSync(keySource, salt, 32);
-    const iv = randomBytes(16);
-    const cipher = createCipheriv('aes-256-ctr', key, iv);
+    const iv = randomBytes(12); // GCM standard IV size is 12 bytes
+    const cipher = createCipheriv('aes-256-gcm', key, iv);
     const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
-    // Store as base64: iv:encrypted
-    return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+    const tag = cipher.getAuthTag();
+    // Store as hex: iv:tag:encrypted
+    return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
   /**
    * Decrypt a string using AES-256-CTR. Expects base64 string with IV prepended.
    */
   decryptSecret(data: string): string {
-    const [ivHex, encryptedHex] = data.split(':');
+    // GCM format: iv:tag:encrypted
+    const [ivHex, tagHex, encryptedHex] = data.split(':');
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     if (!keySource) {
       throw new InternalServerErrorException(
@@ -149,8 +151,10 @@ export class AuthService {
     }
     const key = scryptSync(keySource, salt, 32);
     const iv = Buffer.from(ivHex, 'hex');
+    const tag = Buffer.from(tagHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = createDecipheriv('aes-256-ctr', key, iv);
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
     const decrypted = Buffer.concat([
       decipher.update(encrypted),
       decipher.final(),
