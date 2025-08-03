@@ -202,8 +202,17 @@ export class AuthService {
       length: 32,
       issuer: 'NestTracker',
     });
+    // Entropy validation: base32 has 5 bits per char, so 32 chars = 160 bits
+    const base32Secret = secretObj.base32;
+    const minEntropyBits = 160;
+    const actualEntropyBits = base32Secret.length * 5;
+    if (actualEntropyBits < minEntropyBits) {
+      throw new InternalServerErrorException(
+        `Generated 2FA secret does not meet minimum entropy requirements: ${actualEntropyBits} < ${minEntropyBits} bits.`,
+      );
+    }
     return {
-      secret: secretObj.base32,
+      secret: base32Secret,
       otpauthUrl: secretObj.otpauth_url,
     };
   }
