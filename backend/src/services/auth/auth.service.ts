@@ -1,5 +1,6 @@
 import { User } from '@backend/entities/user/user.entity';
 import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,7 +9,16 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly testRepo: Repository<User>,
+    private readonly jwtService: JwtService,
   ) {}
+
+  generateJwt(user: User): string {
+    return this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      roles: user.roles ?? [],
+    });
+  }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const user = await this.testRepo.findOne({ where: { email } });

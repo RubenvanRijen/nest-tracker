@@ -49,10 +49,12 @@ export class AuthController {
     if (!valid) {
       return { error: 'Invalid credentials' };
     }
-    // TODO: Issue JWT token here
+    // Issue JWT token here
+    const token = this.authService.generateJwt(user);
     return {
       email: user.email,
       id: user.id,
+      token,
       message: 'Login successful',
     };
   }
