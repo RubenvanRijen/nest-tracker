@@ -1,5 +1,9 @@
 import { User } from '@backend/entities/user/user.entity';
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,6 +29,35 @@ export class AuthService {
       email: user.email,
       roles: user.roles ?? [],
     });
+  }
+
+  /**
+   * Handles login logic, including password and 2FA verification.
+   */
+  async loginUser(
+    email: string,
+    password: string,
+    token?: string,
+  ): Promise<{ user: User; jwt: string }> {
+    const user = await this.getUserByEmail(email);
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const valid = await this.comparePassword(password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (user.twoFaSecret) {
+      if (!token) {
+        throw new BadRequestException('2FA token required');
+      }
+      const secret = this.decryptSecret(user.twoFaSecret);
+      const is2faValid = this.verify2faToken(secret, token);
+      if (!is2faValid) {
+        throw new UnauthorizedException('Invalid 2FA token');
+      }
+    }
+    return { user, jwt: this.generateJwt(user) };
   }
 
   /**
@@ -61,11 +94,13 @@ export class AuthService {
    * Encrypt a string using AES-256-CTR. Returns base64 string with IV prepended.
    */
   encryptSecret(secret: string): string {
-    const key = scryptSync(
-      process.env.TWOFA_ENCRYPT_KEY || 'default_key',
-      'salt',
-      32,
-    );
+    const keySource = process.env.TWOFA_ENCRYPT_KEY;
+    if (!keySource) {
+      throw new Error(
+        'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
+      );
+    }
+    const key = scryptSync(keySource, 'salt', 32);
     const iv = randomBytes(16);
     const cipher = createCipheriv('aes-256-ctr', key, iv);
     const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
@@ -78,11 +113,13 @@ export class AuthService {
    */
   decryptSecret(data: string): string {
     const [ivHex, encryptedHex] = data.split(':');
-    const key = scryptSync(
-      process.env.TWOFA_ENCRYPT_KEY || 'default_key',
-      'salt',
-      32,
-    );
+    const keySource = process.env.TWOFA_ENCRYPT_KEY;
+    if (!keySource) {
+      throw new Error(
+        'Encryption key (TWOFA_ENCRYPT_KEY) must be set in environment',
+      );
+    }
+    const key = scryptSync(keySource, 'salt', 32);
     const iv = Buffer.from(ivHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
     const decipher = createDecipheriv('aes-256-ctr', key, iv);

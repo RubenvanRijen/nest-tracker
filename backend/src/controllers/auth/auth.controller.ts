@@ -6,8 +6,15 @@ import {
   ValidationPipe,
   Get,
   Req,
+  UseGuards,
+  BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '@backend/guards/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
+import { LoginDto } from '@backend/dto/auth/login.dto';
+import { TwoFactorAuthSetupDto } from '@backend/dto/auth/twofa-setup.dto';
+import { TwoFactorAuthVerifyDto } from '@backend/dto/auth/twofa-verify.dto';
 import { AuthService } from '@backend/services/auth/auth.service';
 import { User } from '@backend/entities/user/user.entity';
 import type { Request } from 'express';
@@ -38,59 +45,44 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(
-    @Body() body: { email: string; password: string; token?: string },
-  ) {
-    const user: User | undefined = await this.authService.getUserByEmail(
-      body.email,
-    );
-    if (!user || !user.passwordHash) {
-      return { error: 'Invalid credentials' };
-    }
-    const valid = await this.authService.comparePassword(
-      body.password,
-      user.passwordHash,
-    );
-    if (!valid) {
-      return { error: 'Invalid credentials' };
-    }
-    // If 2FA is enabled, require TOTP token
-    if (user.twoFaSecret) {
-      if (!body.token) {
-        return { error: '2FA token required' };
+  async login(@Body() body: LoginDto) {
+    try {
+      const { user, jwt } = await this.authService.loginUser(
+        body.email,
+        body.password,
+        body.token,
+      );
+      return {
+        email: user.email,
+        id: user.id,
+        token: jwt,
+        message: 'Login successful',
+      };
+    } catch (err) {
+      if (
+        err instanceof BadRequestException ||
+        err instanceof UnauthorizedException
+      ) {
+        throw err;
       }
-      // Decrypt secret
-      const secret = this.authService.decryptSecret(user.twoFaSecret);
-      const is2faValid = this.authService.verify2faToken(secret, body.token);
-      if (!is2faValid) {
-        return { error: 'Invalid 2FA token' };
-      }
+      throw new BadRequestException('Login failed');
     }
-    // Issue JWT token here
-    const token = this.authService.generateJwt(user);
-    return {
-      email: user.email,
-      id: user.id,
-      token,
-      message: 'Login successful',
-    };
   }
 
   /**
    * Step 1: 2FA Setup - Generate TOTP secret and otpauth URL
    * POST /auth/2fa/setup { email }
    */
+  @UseGuards(JwtAuthGuard)
   @Post('2fa/setup')
-  async setup2fa(@Body() body: { email: string }) {
+  async setup2fa(@Body() body: TwoFactorAuthSetupDto) {
     const user = await this.authService.getUserByEmail(body.email);
     if (!user) {
-      return { error: 'User not found' };
+      throw new BadRequestException('User not found');
     }
-    // Generate secret and otpauthUrl
     const { secret, otpauthUrl } = this.authService.generate2faSecret(
       user.email,
     );
-    // Do NOT save secret yet; only after verification
     return { secret, otpauthUrl };
   }
 
@@ -98,22 +90,18 @@ export class AuthController {
    * Step 1: 2FA Verification - Verify TOTP code and enable 2FA
    * POST /auth/2fa/verify { email, token, secret }
    */
+  @UseGuards(JwtAuthGuard)
   @Post('2fa/verify')
-  async verify2fa(
-    @Body() body: { email: string; token: string; secret: string },
-  ) {
+  async verify2fa(@Body() body: TwoFactorAuthVerifyDto) {
     const user = await this.authService.getUserByEmail(body.email);
     if (!user) {
-      return { error: 'User not found' };
+      throw new BadRequestException('User not found');
     }
-    // Verify token
     const valid = this.authService.verify2faToken(body.secret, body.token);
     if (!valid) {
-      return { error: 'Invalid 2FA token' };
+      throw new UnauthorizedException('Invalid 2FA token');
     }
-    // Encrypt secret before saving
     user.twoFaSecret = this.authService.encryptSecret(body.secret);
-    // Use public saveUser method
     await this.authService.saveUser(user);
     return { message: '2FA enabled' };
   }
@@ -122,15 +110,16 @@ export class AuthController {
    * Step 1: 2FA Status - Check if 2FA is enabled for user
    * GET /auth/2fa/status?email=...
    */
+  @UseGuards(JwtAuthGuard)
   @Get('2fa/status')
   async twofaStatus(@Req() req: Request) {
     const email = req.query.email as string;
     if (!email) {
-      return { error: 'Email required' };
+      throw new BadRequestException('Email required');
     }
     const user = await this.authService.getUserByEmail(email);
     if (!user) {
-      return { error: 'User not found' };
+      throw new BadRequestException('User not found');
     }
     return { enabled: !!user.twoFaSecret };
   }
