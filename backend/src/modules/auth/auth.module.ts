@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, InternalServerErrorException } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from '@backend/services/auth/auth.service';
@@ -10,15 +10,19 @@ import { User } from '@backend/entities/user/user.entity';
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule,
-    JwtModule.register({
-      secret: (() => {
+    JwtModule.registerAsync({
+      useFactory: () => {
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-          throw new Error('JWT_SECRET must be set in environment');
+          throw new InternalServerErrorException(
+            'JWT_SECRET must be set in environment',
+          );
         }
-        return secret;
-      })(),
-      signOptions: { expiresIn: '1h' },
+        return {
+          secret,
+          signOptions: { expiresIn: '1h' },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
