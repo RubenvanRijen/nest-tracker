@@ -29,7 +29,6 @@ import { APP_GUARD } from '@nestjs/core';
         };
       },
     }),
-    // ts-ignore-next-line
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -44,7 +43,6 @@ import { APP_GUARD } from '@nestjs/core';
     ApiKeyService,
     {
       provide: APP_GUARD,
-      // ts-ignore-next-line
       useClass: ThrottlerGuard,
     },
   ],
