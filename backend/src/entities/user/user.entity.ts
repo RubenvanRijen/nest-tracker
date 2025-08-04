@@ -1,5 +1,5 @@
 import { PrimaryGeneratedColumn, Column, Entity, OneToMany } from 'typeorm';
-import { ApiKey } from '@backend/entities/api-key/api-key.entity';
+import { ApiKey } from '@backend/entities/auth/api-key.entity';
 /**
  * Represents an application user and their authentication credentials.
  * Contains security-related fields for advanced authentication mechanisms.
