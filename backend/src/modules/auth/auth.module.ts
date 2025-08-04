@@ -5,6 +5,7 @@ import { AuthService } from '@backend/services/auth/auth.service';
 import { AuthController } from '@backend/controllers/auth/auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '@backend/entities/user/user.entity';
+import { ApiKey } from '@backend/entities/auth/api-key.entity';
 import { TwoFaService } from '@backend/services/auth/twofa.service';
 import { ApiKeyService } from '@backend/services/auth/api-key.service';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -12,7 +13,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, ApiKey]),
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => {
