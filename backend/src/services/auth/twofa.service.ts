@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import {
   randomBytes,
@@ -84,7 +88,7 @@ export class TwoFaService {
     this.logger.log(`Generated new 2FA secret for: ${email}`);
     return { secret: base32Secret, otpauthUrl: secretObj.otpauth_url };
   }
-  
+
   /**
    * Rotates a user's 2FA secret, generating a new one
    * @param email User's email for the new secret
@@ -105,34 +109,34 @@ export class TwoFaService {
       }),
     );
   }
-  
+
   /**
    * Generates a set of backup codes for 2FA recovery
    * @returns Array of plain text backup codes and their hashed versions
    */
-  generateBackupCodes(): { plainCodes: string[], hashedCodes: string[] } {
+  generateBackupCodes(): { plainCodes: string[]; hashedCodes: string[] } {
     const plainCodes: string[] = [];
     const hashedCodes: string[] = [];
-    
+
     for (let i = 0; i < this.BACKUP_CODE_COUNT; i++) {
       // Generate a random code with specified length
       const code = randomBytes(this.BACKUP_CODE_LENGTH / 2)
         .toString('hex')
         .toUpperCase();
-      
+
       // Format the code with a hyphen in the middle for readability
       const formattedCode = `${code.substring(0, 4)}-${code.substring(4)}`;
       plainCodes.push(formattedCode);
-      
+
       // Hash the code for storage
       const hashedCode = this.hashBackupCode(formattedCode);
       hashedCodes.push(hashedCode);
     }
-    
+
     this.logger.log(`Generated ${plainCodes.length} backup codes`);
     return { plainCodes, hashedCodes };
   }
-  
+
   /**
    * Hashes a backup code for secure storage
    * @param code The backup code to hash
@@ -141,7 +145,7 @@ export class TwoFaService {
   private hashBackupCode(code: string): string {
     return createHash('sha256').update(code).digest('hex');
   }
-  
+
   /**
    * Verifies a backup code against a list of hashed codes
    * @param code The backup code to verify
@@ -152,7 +156,7 @@ export class TwoFaService {
     if (!code || !hashedCodes || hashedCodes.length === 0) {
       return -1;
     }
-    
+
     const hashedCode = this.hashBackupCode(code);
     return hashedCodes.indexOf(hashedCode);
   }
