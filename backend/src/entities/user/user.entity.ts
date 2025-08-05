@@ -50,6 +50,13 @@ export class User {
    */
   @Column({ type: 'timestamp', nullable: true })
   twoFaLastUsed?: Date;
+  
+  /**
+   * Array of hashed backup codes for 2FA recovery.
+   * These are one-time use codes for when the user loses their 2FA device.
+   */
+  @Column('simple-array', { nullable: true })
+  twoFaBackupCodes?: string[];
 
   /**
    * Identifier for passkey-based authentication (e.g., WebAuthn).

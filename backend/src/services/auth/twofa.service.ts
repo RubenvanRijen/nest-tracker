@@ -1,15 +1,19 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import {
   randomBytes,
   createCipheriv,
   createDecipheriv,
   scryptSync,
+  createHash,
 } from 'crypto';
 
 @Injectable()
 export class TwoFaService {
   private readonly encryptionKey: Buffer;
+  private readonly logger = new Logger(TwoFaService.name);
+  private readonly BACKUP_CODE_COUNT = 10;
+  private readonly BACKUP_CODE_LENGTH = 8;
 
   constructor() {
     this.encryptionKey = this.deriveEncryptionKey();
@@ -77,7 +81,18 @@ export class TwoFaService {
         `Generated 2FA secret does not meet minimum entropy requirements: ${actualEntropyBits} < ${minEntropyBits} bits.`,
       );
     }
+    this.logger.log(`Generated new 2FA secret for: ${email}`);
     return { secret: base32Secret, otpauthUrl: secretObj.otpauth_url };
+  }
+  
+  /**
+   * Rotates a user's 2FA secret, generating a new one
+   * @param email User's email for the new secret
+   * @returns New secret and otpauth URL
+   */
+  rotate2faSecret(email: string): { secret: string; otpauthUrl: string } {
+    this.logger.log(`Rotating 2FA secret for: ${email}`);
+    return this.generate2faSecret(email);
   }
 
   verify2faToken(secret: string, token: string): boolean {
@@ -89,5 +104,56 @@ export class TwoFaService {
         window: 1,
       }),
     );
+  }
+  
+  /**
+   * Generates a set of backup codes for 2FA recovery
+   * @returns Array of plain text backup codes and their hashed versions
+   */
+  generateBackupCodes(): { plainCodes: string[], hashedCodes: string[] } {
+    const plainCodes: string[] = [];
+    const hashedCodes: string[] = [];
+    
+    for (let i = 0; i < this.BACKUP_CODE_COUNT; i++) {
+      // Generate a random code with specified length
+      const code = randomBytes(this.BACKUP_CODE_LENGTH / 2)
+        .toString('hex')
+        .toUpperCase();
+      
+      // Format the code with a hyphen in the middle for readability
+      const formattedCode = `${code.substring(0, 4)}-${code.substring(4)}`;
+      plainCodes.push(formattedCode);
+      
+      // Hash the code for storage
+      const hashedCode = this.hashBackupCode(formattedCode);
+      hashedCodes.push(hashedCode);
+    }
+    
+    this.logger.log(`Generated ${plainCodes.length} backup codes`);
+    return { plainCodes, hashedCodes };
+  }
+  
+  /**
+   * Hashes a backup code for secure storage
+   * @param code The backup code to hash
+   * @returns The hashed backup code
+   */
+  private hashBackupCode(code: string): string {
+    return createHash('sha256').update(code).digest('hex');
+  }
+  
+  /**
+   * Verifies a backup code against a list of hashed codes
+   * @param code The backup code to verify
+   * @param hashedCodes Array of hashed backup codes
+   * @returns The index of the matched code or -1 if no match
+   */
+  verifyBackupCode(code: string, hashedCodes: string[]): number {
+    if (!code || !hashedCodes || hashedCodes.length === 0) {
+      return -1;
+    }
+    
+    const hashedCode = this.hashBackupCode(code);
+    return hashedCodes.indexOf(hashedCode);
   }
 }

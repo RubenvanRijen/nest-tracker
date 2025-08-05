@@ -11,6 +11,7 @@ import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
+import { PasswordPolicyService } from '@backend/services/auth/password-policy.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     public readonly jwtService: JwtService,
+    private readonly passwordPolicyService: PasswordPolicyService,
   ) {}
 
   generateJwt(user: User): string {
@@ -68,7 +70,8 @@ export class AuthService {
     });
     
     if (!user || !user.refreshTokenHash || !user.refreshTokenExpiresAt) {
-      throw new ForbiddenException('Invalid refresh token');
+      this.logger.warn(`Refresh token attempt with invalid user or missing token: ${userId}`);
+      throw new ForbiddenException('Session expired, please login again');
     }
     
     // Check if token is expired
@@ -77,19 +80,22 @@ export class AuthService {
       user.refreshTokenHash = null;
       user.refreshTokenExpiresAt = null;
       await this.saveUser(user);
-      throw new ForbiddenException('Refresh token expired');
+      this.logger.warn(`Expired refresh token used for user: ${userId}`);
+      throw new ForbiddenException('Session expired, please login again');
     }
     
     // Verify the token matches
     const isValid = await this.comparePassword(refreshToken, user.refreshTokenHash);
     if (!isValid) {
-      throw new ForbiddenException('Invalid refresh token');
+      this.logger.warn(`Invalid refresh token used for user: ${userId}`);
+      throw new ForbiddenException('Session expired, please login again');
     }
     
     // Generate new tokens
     const newJwt = this.generateJwt(user);
     const newRefreshToken = await this.generateRefreshToken(user);
     
+    this.logger.log(`Refresh token successfully used for user: ${userId}`);
     return { token: newJwt, refreshToken: newRefreshToken };
   }
   /**
@@ -128,13 +134,13 @@ export class AuthService {
     const user = await this._getUserWithPasswordByEmail(email);
     if (!user || !user.passwordHash) {
       this.logger.warn(`Failed login attempt for email: ${email}`);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Authentication failed');
     }
     
     const valid = await this.comparePassword(password, user.passwordHash);
     if (!valid) {
       this.logger.warn(`Failed login attempt (invalid password) for user: ${user.id}`);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Authentication failed');
     }
     
     // Generate JWT token
@@ -175,10 +181,21 @@ export class AuthService {
   async registerUser(email: string, password: string): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
+      this.logger.warn(`Registration attempt with existing email: ${email}`);
       throw new BadRequestException('User with this email already exists');
     }
+    
+    // Check if password is common or weak
+    const passwordValidation = this.passwordPolicyService.validatePassword(password);
+    if (!passwordValidation.valid) {
+      this.logger.warn(`Registration attempt with weak password: ${passwordValidation.reason}`);
+      throw new BadRequestException(passwordValidation.reason);
+    }
+    
     const passwordHash = await this.hashPassword(password);
     const user = this.userRepository.create({ email, passwordHash });
-    return await this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+    this.logger.log(`User registered successfully: ${savedUser.id}`);
+    return savedUser;
   }
 }

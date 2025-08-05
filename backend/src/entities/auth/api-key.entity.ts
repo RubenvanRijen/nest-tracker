@@ -21,6 +21,12 @@ export class ApiKey {
   @Column({ default: true })
   active: boolean;
 
+  @Column('simple-array', { nullable: true })
+  scopes: string[];
+
+  @Column({ nullable: true })
+  description: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }
