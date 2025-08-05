@@ -23,7 +23,9 @@ describe('Authentication (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
 
-    userRepository = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
+    userRepository = moduleFixture.get<Repository<User>>(
+      getRepositoryToken(User),
+    );
     authService = moduleFixture.get<AuthService>(AuthService);
 
     // Clean up any existing test users
@@ -47,7 +49,7 @@ describe('Authentication (e2e)', () => {
           password: 'StrongP@ssword123',
         })
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body).toHaveProperty('email', 'test@example.com');
           expect(res.body).toHaveProperty('id');
           expect(res.body).toHaveProperty('message', 'Registration successful');
@@ -56,7 +58,9 @@ describe('Authentication (e2e)', () => {
 
     it('should reject registration with existing email', async () => {
       // First, ensure our test user exists
-      const existingUser = await userRepository.findOne({ where: { email: 'test@example.com' } });
+      const existingUser = await userRepository.findOne({
+        where: { email: 'test@example.com' },
+      });
       testUser = existingUser; // Save for later tests
 
       return request(app.getHttpServer())
@@ -66,7 +70,7 @@ describe('Authentication (e2e)', () => {
           password: 'StrongP@ssword123',
         })
         .expect(400)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.message).toContain('already exists');
         });
     });
@@ -91,7 +95,7 @@ describe('Authentication (e2e)', () => {
           password: 'StrongP@ssword123',
         })
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body).toHaveProperty('token');
           expect(res.body).toHaveProperty('refreshToken');
           expect(res.body).toHaveProperty('message', 'Login successful');
@@ -107,7 +111,7 @@ describe('Authentication (e2e)', () => {
           password: 'WrongPassword123!',
         })
         .expect(401)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body.message).toBe('Authentication failed');
         });
     });
@@ -121,15 +125,13 @@ describe('Authentication (e2e)', () => {
         .get('/auth/2fa/status')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body).toHaveProperty('enabled');
         });
     });
 
     it('should reject access to protected route without JWT', () => {
-      return request(app.getHttpServer())
-        .get('/auth/2fa/status')
-        .expect(401);
+      return request(app.getHttpServer()).get('/auth/2fa/status').expect(401);
     });
   });
 
@@ -139,7 +141,7 @@ describe('Authentication (e2e)', () => {
         .post('/auth/2fa/setup')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(201)
-        .expect(res => {
+        .expect((res) => {
           expect(res.body).toHaveProperty('secret');
           expect(res.body).toHaveProperty('otpauthUrl');
         });

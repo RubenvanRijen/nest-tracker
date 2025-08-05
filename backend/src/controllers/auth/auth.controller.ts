@@ -275,7 +275,7 @@ export class AuthController {
     @Body() body: TwoFactorAuthVerifyDto,
   ) {
     const user = req.user;
-    if (!user || typeof user.email !== 'string') {
+    if (!user) {
       this.logger.warn('2FA enable attempt with invalid user');
       throw new UnauthorizedException('User not found');
     }
@@ -367,7 +367,7 @@ export class AuthController {
     @Body() body: TwoFactorAuthVerifyDto,
   ) {
     const user = req.user;
-    if (!user || typeof user.email !== 'string') {
+    if (!user) {
       this.logger.warn('2FA rotation attempt with invalid user');
       throw new UnauthorizedException('User not found');
     }
@@ -605,11 +605,16 @@ export class AuthController {
         refreshToken,
         message: 'Token refreshed successfully',
       };
-    } catch (error) {
-      if (error.status === 403) {
+    } catch (error: unknown) {
+      if (error instanceof ForbiddenException) {
         throw error; // Pass through ForbiddenException
       }
-      this.logger.warn(`Failed token refresh attempt: ${error.message}`);
+      // Safe access to error message
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      this.logger.warn(`Failed token refresh attempt: ${errorMessage}`);
       throw new UnauthorizedException('Session expired, please login again');
     }
   }

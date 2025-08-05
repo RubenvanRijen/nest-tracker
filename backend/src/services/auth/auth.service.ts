@@ -31,7 +31,7 @@ export class AuthService {
       roles: user.roles ?? [],
     });
   }
-  
+
   /**
    * Generates a refresh token for the user and stores its hash in the database.
    * @param user The user to generate a refresh token for
@@ -40,40 +40,51 @@ export class AuthService {
   async generateRefreshToken(user: User): Promise<string> {
     // Generate a secure random token
     const refreshToken = randomBytes(40).toString('hex');
-    
+
     // Hash the token before storing it
     const refreshTokenHash = await this.hashPassword(refreshToken);
-    
+
     // Set expiration date (30 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    
+
     // Update user with new refresh token hash and expiration
     user.refreshTokenHash = refreshTokenHash;
     user.refreshTokenExpiresAt = expiresAt;
     await this.saveUser(user);
-    
+
     return refreshToken;
   }
-  
+
   /**
    * Validates a refresh token and returns a new JWT if valid.
    * @param userId The user ID from the token
    * @param refreshToken The refresh token to validate
    * @returns A new JWT token
    */
-  async refreshJwtToken(userId: string, refreshToken: string): Promise<{ token: string, refreshToken: string }> {
+  async refreshJwtToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
     // Get user with refresh token hash
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'email', 'refreshTokenHash', 'refreshTokenExpiresAt', 'roles']
+      select: [
+        'id',
+        'email',
+        'refreshTokenHash',
+        'refreshTokenExpiresAt',
+        'roles',
+      ],
     });
-    
+
     if (!user || !user.refreshTokenHash || !user.refreshTokenExpiresAt) {
-      this.logger.warn(`Refresh token attempt with invalid user or missing token: ${userId}`);
+      this.logger.warn(
+        `Refresh token attempt with invalid user or missing token: ${userId}`,
+      );
       throw new ForbiddenException('Session expired, please login again');
     }
-    
+
     // Check if token is expired
     if (new Date() > user.refreshTokenExpiresAt) {
       // Clear expired token
@@ -83,18 +94,21 @@ export class AuthService {
       this.logger.warn(`Expired refresh token used for user: ${userId}`);
       throw new ForbiddenException('Session expired, please login again');
     }
-    
+
     // Verify the token matches
-    const isValid = await this.comparePassword(refreshToken, user.refreshTokenHash);
+    const isValid = await this.comparePassword(
+      refreshToken,
+      user.refreshTokenHash,
+    );
     if (!isValid) {
       this.logger.warn(`Invalid refresh token used for user: ${userId}`);
       throw new ForbiddenException('Session expired, please login again');
     }
-    
+
     // Generate new tokens
     const newJwt = this.generateJwt(user);
     const newRefreshToken = await this.generateRefreshToken(user);
-    
+
     this.logger.log(`Refresh token successfully used for user: ${userId}`);
     return { token: newJwt, refreshToken: newRefreshToken };
   }
@@ -136,24 +150,26 @@ export class AuthService {
       this.logger.warn(`Failed login attempt for email: ${email}`);
       throw new UnauthorizedException('Authentication failed');
     }
-    
+
     const valid = await this.comparePassword(password, user.passwordHash);
     if (!valid) {
-      this.logger.warn(`Failed login attempt (invalid password) for user: ${user.id}`);
+      this.logger.warn(
+        `Failed login attempt (invalid password) for user: ${user.id}`,
+      );
       throw new UnauthorizedException('Authentication failed');
     }
-    
+
     // Generate JWT token
     const jwt = this.generateJwt(user);
-    
+
     // For 2FA users, don't generate refresh token yet (will be generated after 2FA verification)
     if (user.twoFaSecret) {
       return { user, jwt };
     }
-    
+
     // Generate refresh token for non-2FA users
     const refreshToken = await this.generateRefreshToken(user);
-    
+
     this.logger.log(`Successful login for user: ${user.id}`);
     return { user, jwt, refreshToken };
   }
@@ -184,14 +200,17 @@ export class AuthService {
       this.logger.warn(`Registration attempt with existing email: ${email}`);
       throw new BadRequestException('User with this email already exists');
     }
-    
+
     // Check if password is common or weak
-    const passwordValidation = this.passwordPolicyService.validatePassword(password);
+    const passwordValidation =
+      this.passwordPolicyService.validatePassword(password);
     if (!passwordValidation.valid) {
-      this.logger.warn(`Registration attempt with weak password: ${passwordValidation.reason}`);
+      this.logger.warn(
+        `Registration attempt with weak password: ${passwordValidation.reason}`,
+      );
       throw new BadRequestException(passwordValidation.reason);
     }
-    
+
     const passwordHash = await this.hashPassword(password);
     const user = this.userRepository.create({ email, passwordHash });
     const savedUser = await this.userRepository.save(user);

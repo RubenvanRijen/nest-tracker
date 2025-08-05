@@ -70,7 +70,7 @@ describe('TwoFaService', () => {
       const token = speakeasy.totp({
         secret,
         encoding: 'base32',
-      });
+      }) as string;
 
       const result = service.verify2faToken(secret, token);
       expect(result).toBe(true);
