@@ -27,7 +27,7 @@ describe('PasswordPolicyService', () => {
         'welcome',
       ];
 
-      commonPasswords.forEach(password => {
+      commonPasswords.forEach((password) => {
         expect(service.isCommonPassword(password)).toBe(true);
       });
     });
@@ -40,7 +40,7 @@ describe('PasswordPolicyService', () => {
         'veryUniquePassword123!',
       ];
 
-      strongPasswords.forEach(password => {
+      strongPasswords.forEach((password) => {
         expect(service.isCommonPassword(password)).toBe(false);
       });
     });
@@ -54,13 +54,9 @@ describe('PasswordPolicyService', () => {
 
   describe('validatePassword', () => {
     it('should validate strong passwords', () => {
-      const strongPasswords = [
-        'StrongP@ss1',
-        'Tr0ub4dor&3',
-        'P@$$w0rd!2023',
-      ];
+      const strongPasswords = ['StrongP@ss1', 'Tr0ub4dor&3', 'P@$$w0rd!2023'];
 
-      strongPasswords.forEach(password => {
+      strongPasswords.forEach((password) => {
         const result = service.validatePassword(password);
         expect(result.valid).toBe(true);
       });
