@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
   HttpCode,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
