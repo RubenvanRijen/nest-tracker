@@ -42,7 +42,7 @@ export class ApiKeyAuthGuard implements CanActivate {
 
     // Check if the API key has the required scopes
     if (requiredScopes.length > 0) {
-      const hasScopes = await this.apiKeyService.hasRequiredScopes(
+      const hasScopes = this.apiKeyService.hasRequiredScopes(
         keyEntity,
         requiredScopes,
       );

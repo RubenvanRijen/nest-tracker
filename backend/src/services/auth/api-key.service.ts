@@ -63,10 +63,7 @@ export class ApiKeyService {
     return { user: apiKey.user, apiKey };
   }
 
-  async hasRequiredScopes(
-    apiKey: ApiKey,
-    requiredScopes: string[],
-  ): Promise<boolean> {
+  hasRequiredScopes(apiKey: ApiKey, requiredScopes: string[]): boolean {
     // If no scopes are required, allow access
     if (!requiredScopes || requiredScopes.length === 0) {
       return true;
