@@ -10,6 +10,7 @@ import { TwoFaService } from '@backend/services/auth/twofa.service';
 import { ApiKeyService } from '@backend/services/auth/api-key.service';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtStrategy } from '@backend/strategies/jwt.strategy';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { APP_GUARD } from '@nestjs/core';
     AuthService,
     TwoFaService,
     ApiKeyService,
+    JwtStrategy,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

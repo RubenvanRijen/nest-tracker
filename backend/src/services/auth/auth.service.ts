@@ -4,11 +4,13 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +19,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService,
+    public readonly jwtService: JwtService,
   ) {}
 
   generateJwt(user: User): string {
@@ -26,6 +28,69 @@ export class AuthService {
       email: user.email,
       roles: user.roles ?? [],
     });
+  }
+  
+  /**
+   * Generates a refresh token for the user and stores its hash in the database.
+   * @param user The user to generate a refresh token for
+   * @returns The generated refresh token
+   */
+  async generateRefreshToken(user: User): Promise<string> {
+    // Generate a secure random token
+    const refreshToken = randomBytes(40).toString('hex');
+    
+    // Hash the token before storing it
+    const refreshTokenHash = await this.hashPassword(refreshToken);
+    
+    // Set expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    
+    // Update user with new refresh token hash and expiration
+    user.refreshTokenHash = refreshTokenHash;
+    user.refreshTokenExpiresAt = expiresAt;
+    await this.saveUser(user);
+    
+    return refreshToken;
+  }
+  
+  /**
+   * Validates a refresh token and returns a new JWT if valid.
+   * @param userId The user ID from the token
+   * @param refreshToken The refresh token to validate
+   * @returns A new JWT token
+   */
+  async refreshJwtToken(userId: string, refreshToken: string): Promise<{ token: string, refreshToken: string }> {
+    // Get user with refresh token hash
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'refreshTokenHash', 'refreshTokenExpiresAt', 'roles']
+    });
+    
+    if (!user || !user.refreshTokenHash || !user.refreshTokenExpiresAt) {
+      throw new ForbiddenException('Invalid refresh token');
+    }
+    
+    // Check if token is expired
+    if (new Date() > user.refreshTokenExpiresAt) {
+      // Clear expired token
+      user.refreshTokenHash = null;
+      user.refreshTokenExpiresAt = null;
+      await this.saveUser(user);
+      throw new ForbiddenException('Refresh token expired');
+    }
+    
+    // Verify the token matches
+    const isValid = await this.comparePassword(refreshToken, user.refreshTokenHash);
+    if (!isValid) {
+      throw new ForbiddenException('Invalid refresh token');
+    }
+    
+    // Generate new tokens
+    const newJwt = this.generateJwt(user);
+    const newRefreshToken = await this.generateRefreshToken(user);
+    
+    return { token: newJwt, refreshToken: newRefreshToken };
   }
   /**
    * Handles login logic, including password and 2FA verification.
@@ -51,20 +116,40 @@ export class AuthService {
     });
   }
 
+  /**
+   * Authenticates a user with email and password.
+   * If successful, generates JWT and refresh tokens.
+   */
   async loginUser(
     email: string,
     password: string,
-  ): Promise<{ user: User; jwt: string }> {
+  ): Promise<{ user: User; jwt: string; refreshToken?: string }> {
     // Use the dedicated method to fetch the user with their password hash
     const user = await this._getUserWithPasswordByEmail(email);
     if (!user || !user.passwordHash) {
+      this.logger.warn(`Failed login attempt for email: ${email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
+    
     const valid = await this.comparePassword(password, user.passwordHash);
     if (!valid) {
+      this.logger.warn(`Failed login attempt (invalid password) for user: ${user.id}`);
       throw new UnauthorizedException('Invalid credentials');
     }
-    return { user, jwt: this.generateJwt(user) };
+    
+    // Generate JWT token
+    const jwt = this.generateJwt(user);
+    
+    // For 2FA users, don't generate refresh token yet (will be generated after 2FA verification)
+    if (user.twoFaSecret) {
+      return { user, jwt };
+    }
+    
+    // Generate refresh token for non-2FA users
+    const refreshToken = await this.generateRefreshToken(user);
+    
+    this.logger.log(`Successful login for user: ${user.id}`);
+    return { user, jwt, refreshToken };
   }
 
   /**

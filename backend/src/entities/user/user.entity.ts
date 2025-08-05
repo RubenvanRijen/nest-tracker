@@ -59,6 +59,19 @@ export class User {
   passkeyId?: string;
 
   /**
+   * Refresh token hash for JWT refresh functionality.
+   * Stored as a hash to prevent token theft from database.
+   */
+  @Column({ nullable: true, select: false })
+  refreshTokenHash?: string;
+
+  /**
+   * Expiration timestamp for the refresh token.
+   */
+  @Column({ type: 'timestamp', nullable: true })
+  refreshTokenExpiresAt?: Date;
+
+  /**
    * List of roles assigned to the user (e.g., admin, user).
    * Used for authorization and access control.
    */

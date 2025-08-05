@@ -14,17 +14,26 @@ import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
 import { LoginDto } from '@backend/dto/auth/login.dto';
 import { TwoFactorAuthVerifyDto } from '@backend/dto/auth/twofa-verify.dto';
+import { RefreshTokenDto } from '@backend/dto/auth/refresh-token.dto';
 import { AuthService } from '@backend/services/auth/auth.service';
 import { TwoFaService } from '@backend/services/auth/twofa.service';
 import type { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 import { Throttle } from '@nestjs/throttler';
 
+/**
+ * Rate limiting options for login attempts.
+ * Allows 5 attempts per minute (60000ms).
+ */
 const loginThrottleOptions = {
   default: { limit: 5, ttl: 60000 },
 };
 
+/**
+ * Rate limiting options for two-factor authentication attempts.
+ * Allows 5 attempts per minute (60000ms).
+ */
 const twoFaThrottleOptions = {
-  default: { limit: 5, ttl: 60 },
+  default: { limit: 5, ttl: 60000 },
 };
 
 @Controller('auth')
@@ -45,10 +54,15 @@ export class AuthController {
     };
   }
 
+  /**
+   * Handles user login with email and password.
+   * If 2FA is enabled, requires additional verification.
+   * Otherwise, issues JWT and refresh tokens.
+   */
   @Post('login')
   @Throttle(loginThrottleOptions)
   async login(@Body() body: LoginDto) {
-    const { user } = await this.authService.loginUser(
+    const { user, jwt, refreshToken } = await this.authService.loginUser(
       body.email,
       body.password,
     );
@@ -57,19 +71,24 @@ export class AuthController {
       return {
         message: 'Two-factor authentication required',
         twoFaEnabled: true,
+        email: user.email,
       };
     }
 
-    const jwt = this.authService.generateJwt(user);
     return {
       email: user.email,
       id: user.id,
       token: jwt,
+      refreshToken,
       message: 'Login successful',
       twoFaEnabled: false,
     };
   }
 
+  /**
+   * Handles two-factor authentication login.
+   * Verifies the 2FA token and issues JWT and refresh tokens if valid.
+   */
   @Post('2fa/login')
   @Throttle(twoFaThrottleOptions)
   @HttpCode(200)
@@ -86,11 +105,19 @@ export class AuthController {
       throw new UnauthorizedException('Invalid 2FA token');
     }
 
+    // Update last used timestamp
+    user.twoFaLastUsed = new Date();
+    await this.authService.saveUser(user);
+
+    // Generate tokens
     const jwt = this.authService.generateJwt(user);
+    const refreshToken = await this.authService.generateRefreshToken(user);
+    
     return {
       email: user.email,
       id: user.id,
       token: jwt,
+      refreshToken,
       message: 'Login successful',
     };
   }
@@ -145,5 +172,39 @@ export class AuthController {
       lastUsed: user?.twoFaLastUsed ?? null,
       pending: !!user?.pendingTwoFaSecret,
     };
+  }
+  
+  /**
+   * Refreshes an access token using a valid refresh token.
+   * Returns a new access token and refresh token pair.
+   */
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async refreshToken(@Body() body: RefreshTokenDto) {
+    try {
+      // Extract user ID from the JWT payload
+      const payload = this.authService.jwtService.decode(body.refreshToken);
+      if (!payload || typeof payload !== 'object' || !payload.sub) {
+        throw new UnauthorizedException('Invalid token format');
+      }
+      
+      // Refresh the token
+      const { token, refreshToken } = await this.authService.refreshJwtToken(
+        payload.sub as string,
+        body.refreshToken
+      );
+      
+      return {
+        token,
+        refreshToken,
+        message: 'Token refreshed successfully',
+      };
+    } catch (error) {
+      if (error.status === 403) {
+        throw error; // Pass through ForbiddenException
+      }
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 }
