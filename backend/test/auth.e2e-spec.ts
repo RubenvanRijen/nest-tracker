@@ -1,18 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import supertest, { Response } from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../src/entities/user/user.entity';
 import { Repository } from 'typeorm';
-import { AuthService } from '../src/services/auth/auth.service';
+import { Server } from 'http';
+
+// Define response types for better type safety
+interface AuthResponse {
+  email?: string;
+  id?: string;
+  message?: string;
+  token?: string;
+  refreshToken?: string;
+  enabled?: boolean;
+  secret?: string;
+  otpauthUrl?: string;
+}
 
 describe('Authentication (e2e)', () => {
   let app: INestApplication;
   let userRepository: Repository<User>;
-  let authService: AuthService;
+  // authService is defined but not used
   let testUser: User;
   let jwtToken: string;
+  let api: supertest.SuperTest<supertest.Test>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -23,10 +36,15 @@ describe('Authentication (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
 
+    // Initialize the typed supertest instance
+    // Using type assertion to safely type the HTTP server
+    const httpServer = app.getHttpServer() as Server;
+    api = supertest(httpServer);
+
     userRepository = moduleFixture.get<Repository<User>>(
       getRepositoryToken(User),
     );
-    authService = moduleFixture.get<AuthService>(AuthService);
+    // authService = moduleFixture.get<AuthService>(AuthService);
 
     // Clean up any existing test users
     await userRepository.delete({ email: 'test@example.com' });
@@ -42,41 +60,42 @@ describe('Authentication (e2e)', () => {
 
   describe('Registration', () => {
     it('should register a new user', () => {
-      return request(app.getHttpServer())
+      return api
         .post('/auth/register')
         .send({
           email: 'test@example.com',
           password: 'StrongP@ssword123',
         })
         .expect(201)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('email', 'test@example.com');
-          expect(res.body).toHaveProperty('id');
-          expect(res.body).toHaveProperty('message', 'Registration successful');
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body).toHaveProperty('email', 'test@example.com');
+          expect(body).toHaveProperty('id');
+          expect(body).toHaveProperty('message', 'Registration successful');
         });
     });
 
     it('should reject registration with existing email', async () => {
       // First, ensure our test user exists
-      const existingUser = await userRepository.findOne({
+      testUser = (await userRepository.findOne({
         where: { email: 'test@example.com' },
-      });
-      testUser = existingUser; // Save for later tests
+      })) as User; // Save for later tests
 
-      return request(app.getHttpServer())
+      return api
         .post('/auth/register')
         .send({
           email: 'test@example.com',
           password: 'StrongP@ssword123',
         })
         .expect(400)
-        .expect((res) => {
-          expect(res.body.message).toContain('already exists');
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body.message).toContain('already exists');
         });
     });
 
     it('should reject registration with weak password', () => {
-      return request(app.getHttpServer())
+      return api
         .post('/auth/register')
         .send({
           email: 'newuser@example.com',
@@ -88,31 +107,33 @@ describe('Authentication (e2e)', () => {
 
   describe('Login', () => {
     it('should login with valid credentials', () => {
-      return request(app.getHttpServer())
+      return api
         .post('/auth/login')
         .send({
           email: 'test@example.com',
           password: 'StrongP@ssword123',
         })
         .expect(201)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('token');
-          expect(res.body).toHaveProperty('refreshToken');
-          expect(res.body).toHaveProperty('message', 'Login successful');
-          jwtToken = res.body.token; // Save for later tests
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body).toHaveProperty('token');
+          expect(body).toHaveProperty('refreshToken');
+          expect(body).toHaveProperty('message', 'Login successful');
+          jwtToken = body.token as string; // Save for later tests
         });
     });
 
     it('should reject login with invalid credentials', () => {
-      return request(app.getHttpServer())
+      return api
         .post('/auth/login')
         .send({
           email: 'test@example.com',
           password: 'WrongPassword123!',
         })
         .expect(401)
-        .expect((res) => {
-          expect(res.body.message).toBe('Authentication failed');
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body.message).toBe('Authentication failed');
         });
     });
   });
@@ -121,29 +142,31 @@ describe('Authentication (e2e)', () => {
     it('should access protected route with valid JWT', async () => {
       // This assumes you have a protected route to test
       // For example, the 2FA status endpoint
-      return request(app.getHttpServer())
+      await api
         .get('/auth/2fa/status')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('enabled');
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body).toHaveProperty('enabled');
         });
     });
 
     it('should reject access to protected route without JWT', () => {
-      return request(app.getHttpServer()).get('/auth/2fa/status').expect(401);
+      return api.get('/auth/2fa/status').expect(401);
     });
   });
 
   describe('2FA Setup', () => {
     it('should initiate 2FA setup', () => {
-      return request(app.getHttpServer())
+      return api
         .post('/auth/2fa/setup')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(201)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('secret');
-          expect(res.body).toHaveProperty('otpauthUrl');
+        .expect((res: Response) => {
+          const body = res.body as AuthResponse;
+          expect(body).toHaveProperty('secret');
+          expect(body).toHaveProperty('otpauthUrl');
         });
     });
   });
