@@ -183,15 +183,10 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   async refreshToken(@Body() body: RefreshTokenDto) {
     try {
-      // Extract user ID from the JWT payload
-      const payload = this.authService.jwtService.decode(body.refreshToken);
-      if (!payload || typeof payload !== 'object' || !payload.sub) {
-        throw new UnauthorizedException('Invalid token format');
-      }
-      
-      // Refresh the token
+      // Get the user ID from the database by validating the refresh token
+      // The refreshJwtToken method will handle validation and token comparison
       const { token, refreshToken } = await this.authService.refreshJwtToken(
-        payload.sub as string,
+        body.userId,
         body.refreshToken
       );
       

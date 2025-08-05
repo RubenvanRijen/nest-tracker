@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
 
 /**
  * DTO for token refresh requests.
@@ -12,4 +12,12 @@ export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
+
+  /**
+   * The user ID associated with the refresh token.
+   * Must be a valid UUID.
+   */
+  @IsUUID()
+  @IsNotEmpty()
+  userId: string;
 }
