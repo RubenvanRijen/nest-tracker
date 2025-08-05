@@ -26,14 +26,14 @@ export class TwoFaService {
   private deriveEncryptionKey(): Buffer {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!keySource || keySource.length < 32) {
+    if (!keySource || Buffer.byteLength(keySource, 'utf8') < 32) {
       throw new InternalServerErrorException(
-        'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 characters long.',
+        'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 bytes long.',
       );
     }
-    if (!salt || salt.length < 16) {
+    if (!salt || Buffer.byteLength(salt, 'utf8') < 16) {
       throw new InternalServerErrorException(
-        'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
+        'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 bytes long.',
       );
     }
     const derivedKey = scryptSync(keySource, salt, 32);

@@ -38,7 +38,8 @@ describe('TwoFaService', () => {
       expect(result).toHaveProperty('secret');
       expect(result).toHaveProperty('otpauthUrl');
       expect(result.secret.length).toBeGreaterThanOrEqual(16);
-      expect(result.otpauthUrl).toContain(email);
+      // Email is URL-encoded in the otpauthUrl
+      expect(result.otpauthUrl).toContain(encodeURIComponent(email));
     });
 
     it('should rotate a 2FA secret', () => {

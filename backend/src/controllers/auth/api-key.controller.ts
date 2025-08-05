@@ -137,7 +137,7 @@ export class ApiKeyController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized - valid JWT required' })
   async list(@Req() req: IAuthRequest) {
     const userId = req.user?.id;
-    if (!userId) throw new Error('User not found in request');
+    if (!userId) throw new UnauthorizedException('User not found in request');
     return this.apiKeyService.listUserApiKeys(userId);
   }
 
@@ -159,7 +159,7 @@ export class ApiKeyController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized - valid JWT required' })
   async revoke(@Param('id') id: string, @Req() req: IAuthRequest) {
     const userId = req.user?.id;
-    if (!userId) throw new Error('User not found in request');
+    if (!userId) throw new UnauthorizedException('User not found in request');
     await this.apiKeyService.revokeApiKey(id);
     this.logger.log(`API key ${id} revoked by user: ${userId}`);
     return { success: true };
