@@ -70,13 +70,13 @@ export class User {
    * Stored as a hash to prevent token theft from database.
    */
   @Column({ nullable: true, select: false })
-  refreshTokenHash?: string;
+  refreshTokenHash?: string | null;
 
   /**
    * Expiration timestamp for the refresh token.
    */
   @Column({ type: 'timestamp', nullable: true })
-  refreshTokenExpiresAt?: Date;
+  refreshTokenExpiresAt?: Date | null;
 
   /**
    * List of roles assigned to the user (e.g., admin, user).

@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import {
@@ -18,6 +19,8 @@ export class TwoFaService {
   private readonly logger = new Logger(TwoFaService.name);
   private readonly BACKUP_CODE_COUNT = 10;
   private readonly BACKUP_CODE_LENGTH = 8;
+  private readonly MIN_KEY_LENGTH = 32;
+  private readonly MIN_SALT_LENGTH = 16;
 
   constructor() {
     this.encryptionKey = this.deriveEncryptionKey();
@@ -26,12 +29,15 @@ export class TwoFaService {
   private deriveEncryptionKey(): Buffer {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!keySource || Buffer.byteLength(keySource, 'utf8') < 32) {
+    if (
+      !keySource ||
+      Buffer.byteLength(keySource, 'utf8') < this.MIN_KEY_LENGTH
+    ) {
       throw new InternalServerErrorException(
         'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 bytes long.',
       );
     }
-    if (!salt || Buffer.byteLength(salt, 'utf8') < 16) {
+    if (!salt || Buffer.byteLength(salt, 'utf8') < this.MIN_SALT_LENGTH) {
       throw new InternalServerErrorException(
         'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 bytes long.',
       );
@@ -56,7 +62,7 @@ export class TwoFaService {
   decryptSecret(data: string): string {
     const parts = data.split(':');
     if (parts.length !== 3) {
-      throw new InternalServerErrorException('Invalid encrypted data format');
+      throw new UnauthorizedException('Invalid encrypted data format');
     }
     const [ivHex, tagHex, encryptedHex] = parts;
     const iv = Buffer.from(ivHex, 'hex');

@@ -22,7 +22,6 @@ interface AuthResponse {
 describe('Authentication (e2e)', () => {
   let app: INestApplication;
   let userRepository: Repository<User>;
-  // authService is defined but not used
   let testUser: User;
   let jwtToken: string;
   let api: supertest.SuperTest<supertest.Test>;
@@ -44,7 +43,6 @@ describe('Authentication (e2e)', () => {
     userRepository = moduleFixture.get<Repository<User>>(
       getRepositoryToken(User),
     );
-    // authService = moduleFixture.get<AuthService>(AuthService);
 
     // Clean up any existing test users
     await userRepository.delete({ email: 'test@example.com' });

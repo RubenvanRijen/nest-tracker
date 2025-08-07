@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class PasswordPolicyService {
+  public static readonly SPECIAL_CHAR_REGEX =
+    /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/;
+  public static readonly PASSWORD_COMPLEXITY_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
   private readonly logger = new Logger(PasswordPolicyService.name);
   private commonPasswords: Set<string> = new Set();
   private readonly COMMON_PASSWORDS = [
@@ -105,7 +109,7 @@ export class PasswordPolicyService {
     }
 
     // Check for special characters
-    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
+    if (!PasswordPolicyService.SPECIAL_CHAR_REGEX.test(password)) {
       return {
         valid: false,
         reason: 'Password must contain at least one special character',

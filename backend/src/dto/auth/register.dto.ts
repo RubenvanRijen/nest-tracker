@@ -1,5 +1,6 @@
 import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PasswordPolicyService } from '@backend/services/auth/password-policy.service';
 
 /**
  * DTO for user registration input validation.
@@ -26,12 +27,9 @@ export class RegisterDto {
   })
   @IsString()
   @MinLength(8)
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.',
-    },
-  )
+  @Matches(PasswordPolicyService.PASSWORD_COMPLEXITY_REGEX, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.',
+  })
   password: string;
 }

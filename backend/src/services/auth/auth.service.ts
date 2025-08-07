@@ -43,10 +43,11 @@ export class AuthService {
 
     // Hash the token before storing it
     const refreshTokenHash = await this.hashPassword(refreshToken);
+    const refreshTokenExpiryDays = 30;
 
     // Set expiration date (30 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + refreshTokenExpiryDays);
 
     // Update user with new refresh token hash and expiration
     user.refreshTokenHash = refreshTokenHash;
