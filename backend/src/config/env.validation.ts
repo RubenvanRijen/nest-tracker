@@ -15,7 +15,7 @@ export const validationSchema = Joi.object<EnvironmentVariables>({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().default(3000),
-  DATABASE_URL: Joi.string().required(),
+  DATABASE_URL: Joi.string().uri().optional(),
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRATION: Joi.string().default('1h'),
   TWOFA_ENCRYPT_KEY: Joi.string().min(32).required(),
