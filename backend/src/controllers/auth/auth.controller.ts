@@ -10,7 +10,6 @@ import {
   UnauthorizedException,
   HttpCode,
   Logger,
-  ForbiddenException,
   HttpException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
@@ -92,6 +91,8 @@ export class AuthController {
    * Handles user login with email and password.
    * If 2FA is enabled, requires additional verification.
    * Otherwise, issues JWT and refresh tokens.
+   * @param body - The request body containing email and password.
+   * @return An object containing user details and tokens.
    */
   @Post('login')
   @Throttle(loginThrottleOptions)
@@ -162,6 +163,8 @@ export class AuthController {
   /**
    * Handles two-factor authentication login.
    * Verifies the 2FA token and issues JWT and refresh tokens if valid.
+   * @param body - The request body containing the email and 2FA token.
+   * @returns A success message if 2FA is enabled.
    */
   @Post('2fa/login')
   @Throttle(twoFaThrottleOptions)
@@ -224,6 +227,12 @@ export class AuthController {
     };
   }
 
+  /**
+   * Sets up two-factor authentication (2FA) for a user.
+   * @param req - The request object containing the user information.
+   * @param body - Contains the email and backup code to verify.
+   * @returns A success message if 2FA is enabled.
+   */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/setup')
   @ApiOperation({ summary: 'Setup 2FA for a user' })
@@ -254,6 +263,12 @@ export class AuthController {
     return { secret, otpauthUrl };
   }
 
+  /**
+   * Enables 2FA for the user after verifying the provided token.
+   * @param req - The request object containing the user information.
+   * @param body - The request body containing the 2FA token.
+   * @returns A success message if 2FA is enabled.
+   */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/enable')
   @Throttle(twoFaThrottleOptions)
@@ -302,6 +317,11 @@ export class AuthController {
     return { message: '2FA enabled' };
   }
 
+  /**
+   * Gets the 2FA status for the current user.
+   * @param req - The request object containing the user information.
+   * @returns The 2FA status of the user.
+   */
   @UseGuards(JwtAuthGuard)
   @Get('2fa/status')
   @ApiOperation({ summary: 'Get 2FA status for the current user' })
@@ -339,6 +359,9 @@ export class AuthController {
   /**
    * Rotates a user's 2FA secret, generating a new one
    * Requires verification of the current 2FA token
+   * @param req - The request object
+   * @param body - The body containing the 2FA token
+   * @returns The result of the 2FA rotation
    */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/rotate')
@@ -413,6 +436,9 @@ export class AuthController {
   /**
    * Generates backup codes for a user's 2FA
    * Requires verification of the current 2FA token
+   * @param req - The request object
+   * @param body - The body containing the 2FA token
+   * @returns The result of the backup code generation
    */
   @UseGuards(JwtAuthGuard)
   @Post('2fa/backup-codes/generate')
@@ -445,7 +471,7 @@ export class AuthController {
     @Body() body: TwoFactorAuthVerifyDto,
   ) {
     const user = req.user;
-    if (!user || typeof user.email !== 'string') {
+    if (!user) {
       this.logger.warn('Backup code generation attempt with invalid user');
       throw new UnauthorizedException('User not found');
     }
@@ -483,7 +509,15 @@ export class AuthController {
   }
 
   /**
-   * Verifies a backup code for 2FA login
+   * Verifies a 2FA backup code for a user.
+   * @param body - Contains the email and backup code to verify.
+   * Verifies the provided backup code against the user's stored backup codes.
+   * If valid, issues JWT and refresh tokens.
+   * Removes the used backup code from the user's list.
+   * @throws UnauthorizedException if the backup code is invalid or no backup codes are available.
+   * @throws UnauthorizedException if the user does not have 2FA enabled or no backup codes are set up.
+   * Logs the verification attempt and success or failure.
+   * @returns The result of the backup code verification.
    */
   @Post('2fa/backup-codes/verify')
   @Throttle(twoFaThrottleOptions)
@@ -567,6 +601,9 @@ export class AuthController {
   /**
    * Refreshes an access token using a valid refresh token.
    * Returns a new access token and refresh token pair.
+   * @param body - Contains the refresh token and user ID.
+   * @returns An object containing the new access token and refresh token.
+   * @throws HttpException if the refresh token is invalid or expired.
    */
   @Post('refresh')
   @HttpCode(200)
@@ -608,6 +645,9 @@ export class AuthController {
         message: 'Token refreshed successfully',
       };
     } catch (error: unknown) {
+      // TypeScript/JavaScript does not support multiple catch blocks,
+      // so we check for specific exception types here and re-throw as needed.
+
       if (error instanceof HttpException) {
         throw error;
       }

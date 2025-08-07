@@ -113,12 +113,12 @@ export class AuthService {
     this.logger.log(`Refresh token successfully used for user: ${userId}`);
     return { token: newJwt, refreshToken: newRefreshToken };
   }
-  /**
-   * Handles login logic, including password and 2FA verification.
-   */
+
   /**
    * Retrieves a user by email, including the password hash for authentication purposes.
    * This method is specifically for login and should not be used for other queries.
+   * @param email - The email of the user to retrieve.
+   * @returns The user object or null if not found.
    */
   private async _getUserWithPasswordByEmail(
     email: string,

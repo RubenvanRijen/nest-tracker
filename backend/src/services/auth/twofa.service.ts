@@ -28,6 +28,11 @@ export class TwoFaService {
     this.encryptionKey = this.deriveEncryptionKey();
   }
 
+  /**
+   * Derives a secure encryption key from environment variables.
+   * Ensures the key and salt meet minimum length requirements.
+   * Throws an error if the key or salt is invalid.
+   */
   private deriveEncryptionKey(): Buffer {
     const keySource = process.env.TWOFA_ENCRYPT_KEY;
     const salt = process.env.TWOFA_ENCRYPT_SALT;
@@ -50,6 +55,11 @@ export class TwoFaService {
     return derivedKey;
   }
 
+  /**
+   * Encrypts a 2FA secret using AES-256-GCM.
+   * @param secret - The secret to encrypt.
+   * @returns The encrypted secret as a string.
+   */
   encryptSecret(secret: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.encryptionKey, iv);
@@ -58,6 +68,11 @@ export class TwoFaService {
     return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
+  /**
+   * Decrypts a previously encrypted 2FA secret.
+   * @param data - The encrypted data to decrypt.
+   * @returns The decrypted secret.
+   */
   decryptSecret(data: string): string {
     const parts = data.split(':');
     if (parts.length !== 3) {
@@ -76,6 +91,11 @@ export class TwoFaService {
     return decrypted.toString();
   }
 
+  /**
+   * Generates a new 2FA secret for a user.
+   * @param email - User's email to associate with the secret.
+   * @returns An object containing the base32 secret and otpauth URL.
+   */
   generate2faSecret(email: string): { secret: string; otpauthUrl: string } {
     const secretObj = speakeasy.generateSecret({
       name: email,
@@ -95,9 +115,9 @@ export class TwoFaService {
   }
 
   /**
-   * Rotates a user's 2FA secret, generating a new one
-   * @param email User's email for the new secret
-   * @returns New secret and otpauth URL
+   * Rotates a user's 2FA secret, generating a new one.
+   * @param {string} email - User's email for the new secret.
+   * @returns {{ secret: string; otpauthUrl: string }} New secret and otpauth URL.
    */
   rotate2faSecret(email: string): { secret: string; otpauthUrl: string } {
     this.logger.log(`Rotating 2FA secret for: ${email}`);

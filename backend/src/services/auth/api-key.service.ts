@@ -16,6 +16,14 @@ export class ApiKeyService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  /**
+   * Generates a new API key for the specified user.
+   *
+   * @param {string} userId - The ID of the user for whom to generate the API key.
+   * @param {string[]} [scopes=['default']] - The scopes to assign to the API key.
+   * @param {string} [description] - An optional description for the API key.
+   * @returns {Promise<{ apiKey: ApiKey; rawKey: string }>} The created ApiKey entity and the raw API key string.
+   */
   async generateApiKey(
     userId: string,
     scopes: string[] = ['default'],
@@ -43,6 +51,11 @@ export class ApiKeyService {
     return { apiKey, rawKey };
   }
 
+  /**
+   * Validates a raw API key string.
+   * @param rawKey - The raw API key string to validate.
+   * @returns The user and API key if valid, or null if invalid.
+   */
   async validateApiKey(
     rawKey: string,
   ): Promise<{ user: User; apiKey: ApiKey } | null> {
@@ -63,6 +76,12 @@ export class ApiKeyService {
     return { user: apiKey.user, apiKey };
   }
 
+  /**
+   * Checks if the API key has the required scopes.
+   * @param apiKey - The API key to check.
+   * @param requiredScopes - The scopes required for the operation.
+   * @returns True if the API key has the required scopes, false otherwise.
+   */
   hasRequiredScopes(apiKey: ApiKey, requiredScopes: string[]): boolean {
     // If no scopes are required, allow access
     if (!requiredScopes || requiredScopes.length === 0) {
@@ -78,6 +97,10 @@ export class ApiKeyService {
     return requiredScopes.every((scope) => apiKey.scopes.includes(scope));
   }
 
+  /**
+   * Revokes an API key by marking it as inactive.
+   * @param apiKeyId - The ID of the API key to revoke.
+   */
   async revokeApiKey(apiKeyId: string): Promise<void> {
     const result = await this.apiKeyRepository.update(apiKeyId, {
       active: false,
@@ -89,11 +112,24 @@ export class ApiKeyService {
     }
   }
 
+  /**
+   * Lists all API keys for a user.
+   * @param userId - The ID of the user whose API keys to list.
+   * @returns An array of ApiKey entities associated with the user.
+   */
   async listUserApiKeys(userId: string): Promise<ApiKey[]> {
     this.logger.log(`Listing API keys for user: ${userId}`);
     return this.apiKeyRepository.find({ where: { user: { id: userId } } });
   }
 
+  /**
+   * Rotates an existing API key for a user.
+   * @param userId - The ID of the user who owns the API key.
+   * @param apiKeyId - The ID of the API key to rotate.
+   * @param scopes - Optional new scopes for the rotated API key.
+   * @param description - Optional new description for the rotated API key.
+   * @returns The newly created ApiKey entity and the raw (unhashed) API key string.
+   */
   async rotateApiKey(
     userId: string,
     apiKeyId: string,
