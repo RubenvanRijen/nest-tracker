@@ -4,8 +4,6 @@ import { Injectable, Logger } from '@nestjs/common';
 export class PasswordPolicyService {
   public static readonly SPECIAL_CHAR_REGEX =
     /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/;
-  public static readonly PASSWORD_COMPLEXITY_REGEX =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
   private readonly logger = new Logger(PasswordPolicyService.name);
   private commonPasswords: Set<string> = new Set();
   private readonly COMMON_PASSWORDS = [

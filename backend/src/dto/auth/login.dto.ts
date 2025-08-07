@@ -6,7 +6,7 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PasswordPolicyService } from '@backend/services/auth/password-policy.service';
+import { PASSWORD_COMPLEXITY_REGEX } from '@backend/constants/password';
 
 /**
  * DTO for user login input validation.
@@ -33,7 +33,7 @@ export class LoginDto {
   })
   @IsString()
   @MinLength(8)
-  @Matches(PasswordPolicyService.PASSWORD_COMPLEXITY_REGEX, {
+  @Matches(PASSWORD_COMPLEXITY_REGEX, {
     message:
       'Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character.',
   })
