@@ -13,11 +13,17 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint . --ext .ts,.tsx",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/settings/database/typeorm.datasource.ts",
+    "db:migration:generate": "npm run typeorm -- migration:generate src/migrations/AutoMigration",
+    "db:migration:run": "npm run typeorm -- migration:run",
+    "db:migration:revert": "npm run typeorm -- migration:revert",
+    "db:schema:drop": "npm run typeorm -- schema:drop",
+    "db:seed:test": "ts-node -r tsconfig-paths/register src/seeds/run-test-seed.ts",
+    "test": "NODE_ENV=test npm run db:schema:drop && npm run db:migration:run && npm run db:seed:test && jest",
+    "test:watch": "NODE_ENV=test npm run db:schema:drop && npm run db:migration:run && npm run db:seed:test && jest --watch",
+    "test:cov": "NODE_ENV=test npm run db:schema:drop && npm run db:migration:run && npm run db:seed:test && jest --coverage",
+    "test:debug": "NODE_ENV=test npm run db:schema:drop && npm run db:migration:run && npm run db:seed:test && node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "NODE_ENV=test npm run db:schema:drop && npm run db:migration:run && npm run db:seed:test && jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.5",
