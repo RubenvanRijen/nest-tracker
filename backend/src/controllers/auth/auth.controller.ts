@@ -11,6 +11,7 @@ import {
   HttpCode,
   Logger,
   ForbiddenException,
+  HttpException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@backend/guards/auth/jwt-auth.guard';
 import { RegisterDto } from '@backend/dto/auth/register.dto';
@@ -607,8 +608,8 @@ export class AuthController {
         message: 'Token refreshed successfully',
       };
     } catch (error: unknown) {
-      if (error instanceof ForbiddenException) {
-        throw error; // Pass through ForbiddenException
+      if (error instanceof HttpException) {
+        throw error;
       }
       // Safe access to error message
       let errorMessage = 'Unknown error';

@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { PasswordPolicyService } from '@backend/services/auth/password-policy.service';
+import { REFRESH_TOKEN_EXPIRY_DAYS } from '@backend/constants/auth';
 
 @Injectable()
 export class AuthService {
@@ -43,11 +44,10 @@ export class AuthService {
 
     // Hash the token before storing it
     const refreshTokenHash = await this.hashPassword(refreshToken);
-    const refreshTokenExpiryDays = 30;
 
     // Set expiration date (30 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + refreshTokenExpiryDays);
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
 
     // Update user with new refresh token hash and expiration
     user.refreshTokenHash = refreshTokenHash;

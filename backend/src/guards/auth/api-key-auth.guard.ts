@@ -10,6 +10,7 @@ import { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 import { Reflector } from '@nestjs/core';
 
 import { API_KEY_SCOPES } from '@backend/decorators/api-key-scopes.decorator';
+import { API_KEY_HEADER } from '@backend/constants/auth';
 
 @Injectable()
 export class ApiKeyAuthGuard implements CanActivate {
@@ -20,7 +21,7 @@ export class ApiKeyAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<IAuthRequest>();
-    const apiKey = req.headers['x-api-key'] as string | undefined;
+    const apiKey = req.headers[API_KEY_HEADER] as string | undefined;
 
     if (!apiKey) {
       throw new UnauthorizedException('API key missing');

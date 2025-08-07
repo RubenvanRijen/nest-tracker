@@ -1,6 +1,6 @@
 import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PASSWORD_COMPLEXITY_REGEX } from '@backend/constants/password';
+import { PASSWORD_COMPLEXITY_REGEX } from '@backend/constants/auth';
 
 /**
  * DTO for user registration input validation.
