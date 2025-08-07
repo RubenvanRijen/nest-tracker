@@ -3,55 +3,27 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  InternalServerErrorException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as speakeasy from 'speakeasy';
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  scryptSync,
-} from 'crypto';
+import { randomBytes } from 'crypto';
+import { PasswordPolicyService } from '@backend/services/auth/password-policy.service';
+import { REFRESH_TOKEN_EXPIRY_DAYS } from '@backend/constants/auth';
 
 @Injectable()
 export class AuthService {
-  private readonly encryptionKey: Buffer;
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-  ) {
-    this.encryptionKey = this.deriveEncryptionKey();
-  }
-
-  private deriveEncryptionKey(): Buffer {
-    const keySource = process.env.TWOFA_ENCRYPT_KEY;
-    const salt = process.env.TWOFA_ENCRYPT_SALT;
-    if (!keySource || keySource.length < 32) {
-      throw new InternalServerErrorException(
-        'Encryption key (TWOFA_ENCRYPT_KEY) must be at least 32 characters long.',
-      );
-    }
-    if (!salt || salt.length < 16) {
-      throw new InternalServerErrorException(
-        'Encryption salt (TWOFA_ENCRYPT_SALT) must be at least 16 characters long.',
-      );
-    }
-    const derivedKey = scryptSync(keySource, salt, 32);
-    if (!derivedKey || derivedKey.length !== 32) {
-      throw new InternalServerErrorException(
-        'Derived encryption key is not 32 bytes. Check your TWOFA_ENCRYPT_KEY and TWOFA_ENCRYPT_SALT values.',
-      );
-    }
-    return derivedKey;
-  }
+    private readonly passwordPolicyService: PasswordPolicyService,
+  ) {}
 
   generateJwt(user: User): string {
     return this.jwtService.sign({
@@ -62,11 +34,91 @@ export class AuthService {
   }
 
   /**
-   * Handles login logic, including password and 2FA verification.
+   * Generates a refresh token for the user and stores its hash in the database.
+   * @param user The user to generate a refresh token for
+   * @returns The generated refresh token
    */
+  async generateRefreshToken(user: User): Promise<string> {
+    // Generate a secure random token
+    const refreshToken = randomBytes(40).toString('hex');
+
+    // Hash the token before storing it
+    const refreshTokenHash = await this.hashPassword(refreshToken);
+
+    // Set expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+    // Update user with new refresh token hash and expiration
+    user.refreshTokenHash = refreshTokenHash;
+    user.refreshTokenExpiresAt = expiresAt;
+    await this.saveUser(user);
+
+    return refreshToken;
+  }
+
+  /**
+   * Validates a refresh token and returns a new JWT if valid.
+   * @param userId The user ID from the token
+   * @param refreshToken The refresh token to validate
+   * @returns A new JWT token
+   */
+  async refreshJwtToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
+    // Get user with refresh token hash
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: [
+        'id',
+        'email',
+        'refreshTokenHash',
+        'refreshTokenExpiresAt',
+        'roles',
+      ],
+    });
+
+    if (!user || !user.refreshTokenHash || !user.refreshTokenExpiresAt) {
+      this.logger.warn(
+        `Refresh token attempt with invalid user or missing token: ${userId}`,
+      );
+      throw new ForbiddenException('Session expired, please login again');
+    }
+
+    // Check if token is expired
+    if (new Date() > user.refreshTokenExpiresAt) {
+      // Clear expired token
+      user.refreshTokenHash = null;
+      user.refreshTokenExpiresAt = null;
+      await this.saveUser(user);
+      this.logger.warn(`Expired refresh token used for user: ${userId}`);
+      throw new ForbiddenException('Session expired, please login again');
+    }
+
+    // Verify the token matches
+    const isValid = await this.comparePassword(
+      refreshToken,
+      user.refreshTokenHash,
+    );
+    if (!isValid) {
+      this.logger.warn(`Invalid refresh token used for user: ${userId}`);
+      throw new ForbiddenException('Session expired, please login again');
+    }
+
+    // Generate new tokens
+    const newJwt = this.generateJwt(user);
+    const newRefreshToken = await this.generateRefreshToken(user);
+
+    this.logger.log(`Refresh token successfully used for user: ${userId}`);
+    return { token: newJwt, refreshToken: newRefreshToken };
+  }
+
   /**
    * Retrieves a user by email, including the password hash for authentication purposes.
    * This method is specifically for login and should not be used for other queries.
+   * @param email - The email of the user to retrieve.
+   * @returns The user object or null if not found.
    */
   private async _getUserWithPasswordByEmail(
     email: string,
@@ -85,47 +137,42 @@ export class AuthService {
     });
   }
 
+  /**
+   * Authenticates a user with email and password.
+   * If successful, generates JWT and refresh tokens.
+   */
   async loginUser(
     email: string,
     password: string,
-    token?: string,
-  ): Promise<{ user: User; jwt: string }> {
+  ): Promise<{ user: User; jwt: string; refreshToken?: string }> {
     // Use the dedicated method to fetch the user with their password hash
     const user = await this._getUserWithPasswordByEmail(email);
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.logger.warn(`Failed login attempt for email: ${email}`);
+      throw new UnauthorizedException('Authentication failed');
     }
+
     const valid = await this.comparePassword(password, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.logger.warn(
+        `Failed login attempt (invalid password) for user: ${user.id}`,
+      );
+      throw new UnauthorizedException('Authentication failed');
     }
+
+    // Generate JWT token
+    const jwt = this.generateJwt(user);
+
+    // For 2FA users, don't generate refresh token yet (will be generated after 2FA verification)
     if (user.twoFaSecret) {
-      if (!token) {
-        throw new BadRequestException('2FA token required');
-      }
-      try {
-        const secret = this.decryptSecret(user.twoFaSecret);
-        const is2faValid = this.verify2faToken(secret, token);
-        if (!is2faValid) {
-          throw new UnauthorizedException('Invalid 2FA token');
-        }
-      } catch (error) {
-        // Log the error with user context and stack trace using NestJS Logger
-        if (error instanceof Error) {
-          this.logger.error(
-            `2FA secret decryption or verification failed for user ${user.id}: ${error.message}`,
-            error.stack,
-          );
-        } else {
-          this.logger.error(
-            `2FA secret decryption or verification failed for user ${user.id}: Unknown error type`,
-            JSON.stringify(error),
-          );
-        }
-        throw new UnauthorizedException('Invalid 2FA token');
-      }
+      return { user, jwt };
     }
-    return { user, jwt: this.generateJwt(user) };
+
+    // Generate refresh token for non-2FA users
+    const refreshToken = await this.generateRefreshToken(user);
+
+    this.logger.log(`Successful login for user: ${user.id}`);
+    return { user, jwt, refreshToken };
   }
 
   /**
@@ -151,83 +198,24 @@ export class AuthService {
   async registerUser(email: string, password: string): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
+      this.logger.warn(`Registration attempt with existing email: ${email}`);
       throw new BadRequestException('User with this email already exists');
     }
+
+    // Check if password is common or weak
+    const passwordValidation =
+      this.passwordPolicyService.validatePassword(password);
+    if (!passwordValidation.valid) {
+      this.logger.warn(
+        `Registration attempt with weak password: ${passwordValidation.reason}`,
+      );
+      throw new BadRequestException(passwordValidation.reason);
+    }
+
     const passwordHash = await this.hashPassword(password);
     const user = this.userRepository.create({ email, passwordHash });
-    return await this.userRepository.save(user);
-  }
-
-  /**
-   * Encrypt a string using AES-256-GCM. Returns hex string with IV, tag, and ciphertext.
-   * Store as hex: iv:tag:encrypted
-   */
-  encryptSecret(secret: string): string {
-    const iv = randomBytes(12); // GCM standard IV size is 12 bytes
-    const cipher = createCipheriv('aes-256-gcm', this.encryptionKey, iv);
-    const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    // Store as hex: iv:tag:encrypted
-    return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
-  }
-
-  /**
-   * Decrypt a string using AES-256-CTR. Expects base64 string with IV prepended.
-   */
-  decryptSecret(data: string): string {
-    // GCM format: iv:tag:encrypted
-    const parts = data.split(':');
-    if (parts.length !== 3) {
-      throw new UnauthorizedException('Invalid encrypted data format');
-    }
-    const [ivHex, tagHex, encryptedHex] = parts;
-    const iv = Buffer.from(ivHex, 'hex');
-    const tag = Buffer.from(tagHex, 'hex');
-    const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
-    decipher.setAuthTag(tag);
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
-    return decrypted.toString();
-  }
-
-  /**
-   * Generate a TOTP secret for 2FA setup.
-   */
-  generate2faSecret(email: string): { secret: string; otpauthUrl: string } {
-    const secretObj = speakeasy.generateSecret({
-      name: email,
-      length: 32,
-      issuer: 'NestTracker',
-    });
-    // Entropy validation: base32 has 5 bits per char, so 32 chars = 160 bits
-    const base32Secret = secretObj.base32;
-    const minEntropyBits = 160;
-    const actualEntropyBits = base32Secret.length * 5;
-    if (actualEntropyBits < minEntropyBits) {
-      throw new InternalServerErrorException(
-        `Generated 2FA secret does not meet minimum entropy requirements: ${actualEntropyBits} < ${minEntropyBits} bits.`,
-      );
-    }
-    return {
-      secret: base32Secret,
-      otpauthUrl: secretObj.otpauth_url,
-    };
-  }
-
-  /**
-   * Verify a TOTP token against a user's secret.
-   */
-  verify2faToken(secret: string, token: string): boolean {
-    return Boolean(
-      speakeasy.totp.verify({
-        secret,
-        encoding: 'base32',
-        token,
-        window: 1, // allow +/- 30s
-      }),
-    );
+    const savedUser = await this.userRepository.save(user);
+    this.logger.log(`User registered successfully: ${savedUser.id}`);
+    return savedUser;
   }
 }
