@@ -75,9 +75,17 @@ describe('Authentication (e2e)', () => {
 
     it('should reject registration with existing email', async () => {
       // First, ensure our test user exists
-      testUser = (await userRepository.findOne({
+      const foundUser = await userRepository.findOne({
         where: { email: 'test@example.com' },
-      })) as User; // Save for later tests
+      }); // Save for later tests
+
+      if (!foundUser) {
+        fail(
+          'Test user not found in the database. Registration test may have failed.',
+        );
+      }
+
+      testUser = foundUser;
 
       return api
         .post('/auth/register')
