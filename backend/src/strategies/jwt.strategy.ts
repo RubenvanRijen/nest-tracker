@@ -1,18 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService } from '@backend/services/auth/auth.service';
 import { User } from '@backend/entities/user/user.entity';
+import { JwtPayload } from '@backend/interfaces/auth/IJwtPayload';
 
 // Define the JWT payload interface
-interface JwtPayload {
-  sub: string;
-  email: string;
-  roles?: string[];
-}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
