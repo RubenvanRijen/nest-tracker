@@ -9,6 +9,7 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.testing
 
 # OS
 .DS_Store
@@ -25,4 +26,3 @@ build/
 .vscode/
 .idea/
 
-/backend/.env.testing
