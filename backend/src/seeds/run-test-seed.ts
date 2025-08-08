@@ -1,10 +1,8 @@
 import 'reflect-metadata';
-import { DataSource } from 'typeorm';
 import dataSource from '@backend/settings/database/typeorm.datasource';
-import { User } from '@backend/entities/user/user.entity';
-import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
+import { runTestSeed } from './test-seed';
 
 function loadTestingEnvIfNeeded() {
   const isTest = process.env.NODE_ENV === 'test';
@@ -30,33 +28,11 @@ function loadTestingEnvIfNeeded() {
   }
 }
 
-async function seed(ds: DataSource) {
-  const userRepo = ds.getRepository(User);
-
-  // Seed a baseline admin-like user that won't conflict with tests
-  const email = 'seedadmin@example.com';
-  const existing = await userRepo.findOne({ where: { email } });
-  if (!existing) {
-    const passwordHash = await bcrypt.hash('AdminP@ssw0rd123', 10);
-    const user = userRepo.create({
-      email,
-      passwordHash,
-      roles: ['admin'],
-    });
-    await userRepo.save(user);
-    // eslint-disable-next-line no-console
-    console.log(`Seeded user: ${email}`);
-  } else {
-    // eslint-disable-next-line no-console
-    console.log(`User already seeded: ${email}`);
-  }
-}
-
 void (async () => {
   try {
     loadTestingEnvIfNeeded();
     await dataSource.initialize();
-    await seed(dataSource);
+    await runTestSeed(dataSource);
   } catch (err) {
     console.error('Seeding failed:', err);
     process.exitCode = 1;

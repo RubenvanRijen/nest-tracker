@@ -67,6 +67,50 @@ cd deploy
 - Automated build, push, and deployment via GitHub Actions
 - See `.github/workflows/deploy.yml` for details
 
+## Local Testing (Backend)
+This project includes a robust Jest + TypeORM testing setup with isolated Postgres schemas per test file.
+
+Prerequisites:
+- Docker running locally
+- A Postgres instance (use the repo's docker-compose to start one)
+
+Quick start:
+1. Start Postgres locally via Docker Compose:
+   ```sh
+   docker-compose up -d database
+   ```
+2. Copy `.env.example` to `.env` and optionally create `.env.testing` to override values only for tests. Example `.env.testing`:
+   ```env
+   NODE_ENV=test
+   DATABASE_URL_TEST=postgresql://nestuser:nestpassword@localhost:5432/nesttracker_test
+   JWT_SECRET=local-test-secret-at-least-32-characters-long-123456
+   TWOFA_ENCRYPT_KEY=local-twofa-key-at-least-32-characters-long-123456
+   TWOFA_ENCRYPT_SALT=local-twofa-salt-16+
+   ```
+   Note: You do not need to set TEST_SCHEMA; the test harness generates a unique schema per test file.
+3. Install backend deps and run tests:
+   ```sh
+   cd backend
+   npm ci
+   npm test -- --runInBand
+   npm run test:e2e -- --runInBand
+   ```
+
+How it works:
+- Per-file Jest setup (backend/test/setup-each-test.ts) runs before each test file.
+  - Generates a unique Postgres schema (TEST_SCHEMA) for the file.
+  - Initializes TypeORM, runs migrations, and seeds baseline data.
+  - After the file finishes, it drops the schema and closes the connection.
+- This enables clean, isolated DB state and supports parallel test execution.
+
+Seeding:
+- The minimal test seed lives at backend/src/seeds/test-seed.ts.
+- You can reuse runTestSeed(dataSource) in specific tests if you need to re-seed.
+
+Tips:
+- If you see connection errors (ECONNREFUSED), make sure your local Postgres is running and DATABASE_URL_TEST points to it.
+- CI runs with a Postgres service and uses the same per-file schema isolation.
+
 ## Contributing
 Pull requests and issues are welcome! Please follow conventional commit messages and code style.
 
