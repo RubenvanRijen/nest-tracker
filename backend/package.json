@@ -13,10 +13,12 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint . --ext .ts,.tsx",
-    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/settings/database/typeorm.datasource.ts",
-    "db:migration:generate": "npm run typeorm -- migration:generate src/migrations/AutoMigration",
-    "db:migration:run": "npm run typeorm -- migration:run",
-    "db:migration:revert": "npm run typeorm -- migration:revert",
+    "typeorm": "node ./node_modules/typeorm/cli.js -d dist/settings/database/typeorm.datasource.js",
+    "db:migration:generate": "npm run build && npm run typeorm -- migration:generate migrations/Migration",
+    "db:migration:create": "npm run typeorm -- migration:create migrations/Migration",
+    "db:migration:run": "npm run build && npm run typeorm -- migration:run",
+    "db:migration:revert": "npm run build && npm run typeorm -- migration:revert",
+    "db:migration:status": "npm run build && npm run typeorm -- migration:show",
     "db:schema:drop": "npm run typeorm -- schema:drop",
     "db:seed:test": "ts-node -r tsconfig-paths/register src/seeds/run-test-seed.ts",
     "test": "NODE_ENV=test jest",
@@ -47,7 +49,10 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "speakeasy": "^2.0.0",
-    "typeorm": "^0.3.25"
+    "typeorm": "^0.3.25",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -73,7 +78,6 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
