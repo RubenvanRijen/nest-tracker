@@ -1,7 +1,8 @@
+import { Environment } from '@backend/enums/environment/environment.enum';
 import { DataSourceOptions } from 'typeorm';
 
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
-const isTest = NODE_ENV === 'test';
+const isTest = NODE_ENV?.toLowerCase() === Environment.Test.toLowerCase();
 
 const DATABASE_URL = isTest
   ? (process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL)
