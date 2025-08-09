@@ -1,18 +1,23 @@
+import { Environment } from '@backend/enums/environment/environment.enum';
 import { DataSourceOptions } from 'typeorm';
-import {
-  Environment,
-  environmentFromString,
-} from '@backend/enums/environment/environment.enum';
+
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
+const isTest = NODE_ENV?.toLowerCase() === Environment.Test.toLowerCase();
+
+const DATABASE_URL = isTest
+  ? (process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL)
+  : process.env.DATABASE_URL;
+
+// Allow tests to isolate by Postgres schema per test file
+const TEST_SCHEMA = isTest ? process.env.TEST_SCHEMA : undefined;
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  host: process.env.POSTGRES_HOST ?? 'localhost',
-  port: Number(process.env.POSTGRES_PORT ?? '5432'),
-  username: process.env.POSTGRES_USER ?? 'postgres',
-  password: process.env.POSTGRES_PASSWORD ?? 'postgres',
-  database: process.env.POSTGRES_DB ?? 'nesttracker',
+  url: DATABASE_URL,
+  schema: TEST_SCHEMA, // only effective for Postgres; undefined in non-test
   entities: [__dirname + '/../../../**/*.entity.{ts,js}'],
-  synchronize:
-    environmentFromString(process.env.NODE_ENV ?? 'development') !==
-    Environment.Production,
+  // Use migrations in all environments to keep parity across dev/test/prod
+  synchronize: false,
+  dropSchema: false,
+  migrations: [__dirname + '/../../../migrations/*{.ts,.js}'],
 };

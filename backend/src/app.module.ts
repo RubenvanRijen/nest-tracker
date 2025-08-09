@@ -13,6 +13,8 @@ import { validationSchema } from '@backend/config/env.validation';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      // Load .env.testing automatically in test, falling back to .env
+      envFilePath: process.env.NODE_ENV === 'test' ? ['.env.testing', '.env'] : ['.env'],
       validationSchema,
       validationOptions: {
         abortEarly: true,
