@@ -5,5 +5,21 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "setupFilesAfterEnv": ["<rootDir>/setup-test-env.ts"],
+  "moduleNameMapping": {
+    "^@backend/(.*)$": "<rootDir>/../src/$1"
+  },
+  "collectCoverageFrom": [
+    "../src/**/*.(t|j)s",
+    "!../src/**/*.spec.ts",
+    "!../src/**/*.e2e-spec.ts",
+    "!../src/**/*.interface.ts",
+    "!../src/**/*.dto.ts",
+    "!../src/**/*.enum.ts",
+    "!../src/**/*.decorator.ts",
+    "!../src/main.ts",
+    "!../src/database/seeds/**/*"
+  ],
+  "coverageDirectory": "../coverage-e2e"
 }

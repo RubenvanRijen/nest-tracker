@@ -1,0 +1,25 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "../src",
+  "testRegex": ".*\\.spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverageFrom": [
+    "**/*.(t|j)s",
+    "!**/*.spec.ts",
+    "!**/*.e2e-spec.ts",
+    "!**/*.interface.ts",
+    "!**/*.dto.ts",
+    "!**/*.enum.ts",
+    "!**/*.decorator.ts",
+    "!main.ts",
+    "!database/seeds/**/*"
+  ],
+  "coverageDirectory": "../coverage",
+  "testEnvironment": "node",
+  "setupFilesAfterEnv": ["<rootDir>/../test/setup-test-env.ts"],
+  "moduleNameMapping": {
+    "^@backend/(.*)$": "<rootDir>/$1"
+  }
+}
