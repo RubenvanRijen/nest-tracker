@@ -14,10 +14,9 @@ const TEST_SCHEMA = isTest ? process.env.TEST_SCHEMA : undefined;
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: DATABASE_URL,
-  schema: TEST_SCHEMA, // only effective for Postgres; undefined in non-test
+  schema: TEST_SCHEMA,
   entities: [__dirname + '/../../../**/*.entity.{ts,js}'],
-  // Use migrations in all environments to keep parity across dev/test/prod
+  migrations: [__dirname + '/../../../migrations/*{.ts,.js}'],
   synchronize: false,
   dropSchema: false,
-  migrations: [__dirname + '/../../../migrations/*{.ts,.js}'],
 };
