@@ -8,15 +8,11 @@ const DATABASE_URL = isTest
   ? (process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL)
   : process.env.DATABASE_URL;
 
-// Allow tests to isolate by Postgres schema per test file
-const TEST_SCHEMA = isTest ? process.env.TEST_SCHEMA : undefined;
-
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: DATABASE_URL,
-  schema: TEST_SCHEMA,
-  entities: [__dirname + '/../../../**/*.entity.{ts,js}'],
-  migrations: [__dirname + '/../../../migrations/*{.ts,.js}'],
+  entities: [`${__dirname}/../**/**.entity{.ts,.js}`],
+  migrations: [`${__dirname}/../**/**.migration{.ts,.js}`],
   synchronize: false,
   dropSchema: false,
 };
