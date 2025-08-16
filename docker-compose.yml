@@ -2,6 +2,8 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
+      target: development
     env_file: .env
     ports:
       - "${BACKEND_PORT}:3000"
@@ -16,6 +18,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
+      target: development
     env_file: .env
     ports:
       - "${FRONTEND_PORT}:5173"

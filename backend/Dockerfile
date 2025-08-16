@@ -1,16 +1,18 @@
-# --- Build stage ---
-FROM node:20-alpine3.20 AS builder
+# --- Base stage ---
+FROM node:20-alpine3.20 AS base
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci # Install all dependencies, including dev
+RUN npm ci
 COPY . .
+
+# --- Development stage ---
+FROM base AS development
 RUN npm run build
+CMD ["npm", "run", "start:dev"]
 
 # --- Production stage ---
-FROM node:20-alpine3.20 AS production
-WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production
+FROM base AS production
+RUN npm run build
+RUN npm prune --production
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

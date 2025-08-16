@@ -69,7 +69,7 @@ export class User {
    * Refresh token hash for JWT refresh functionality.
    * Stored as a hash to prevent token theft from database.
    */
-  @Column({ nullable: true, select: false })
+  @Column({ type: 'text', nullable: true, select: false })
   refreshTokenHash?: string | null;
 
   /**
