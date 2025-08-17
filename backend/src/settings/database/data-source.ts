@@ -11,8 +11,8 @@ const DATABASE_URL = isTest
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: DATABASE_URL,
-  entities: [`${__dirname}/../entities/**/*{.ts,.js}`],
-  migrations: [`${__dirname}/../migrations/*{.ts,.js}`],
+  entities: [__dirname + '/../../entities/**/*{.ts,.js}'],
+  migrations: [__dirname + '/../../migrations/**/*{.ts,.js}'],
   synchronize: false,
   dropSchema: false,
   logging: NODE_ENV === Environment.Development.toLowerCase(),
