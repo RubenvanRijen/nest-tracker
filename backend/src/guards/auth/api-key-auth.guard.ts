@@ -9,7 +9,7 @@ import { ApiKeyService } from '@backend/services/auth/api-key.service';
 import { IAuthRequest } from '@backend/interfaces/auth/IAuthRequest';
 import { Reflector } from '@nestjs/core';
 
-import { API_KEY_SCOPES } from '@backend/decorators/api-key-scopes.decorator';
+import { API_KEY_SCOPES } from '@backend/decorators/auth/api-key-scopes.decorator';
 import { API_KEY_HEADER } from '@backend/constants/auth';
 
 @Injectable()
