@@ -15,4 +15,5 @@ export const dataSourceOptions: DataSourceOptions = {
   migrations: [`${__dirname}/../migrations/*{.ts,.js}`],
   synchronize: false,
   dropSchema: false,
+  logging: NODE_ENV === Environment.Development.toLowerCase(),
 };
